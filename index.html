@@ -94,28 +94,34 @@
       color: #f5c542;
     }
 
-    .comparison-grid {
+    .comparison-table {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
     }
 
-    .stat-card {
+    .comparison-header,
+    .comparison-cell {
       background: #0d1b2a;
       border: 1px solid #23364d;
-      border-radius: 12px;
-      padding: 18px;
+      border-radius: 10px;
+      padding: 14px;
       text-align: center;
     }
 
-    .stat-name {
-      color: #9fb0c3;
-      font-size: 13px;
-      margin-bottom: 10px;
+    .comparison-header {
+      color: #f5c542;
+      font-weight: bold;
+      font-size: 17px;
     }
 
-    .stat-value {
-      font-size: 26px;
+    .metric-name {
+      color: #9fb0c3;
+      font-weight: bold;
+    }
+
+    .metric-value {
+      font-size: 21px;
       font-weight: bold;
     }
 
@@ -192,11 +198,11 @@
       color: #aab6c5;
     }
 
-    @media (max-width: 850px) {
-      .comparison-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+    .error {
+      color: #ff6b6b;
+    }
 
+    @media (max-width: 850px) {
       .team-selectors {
         grid-template-columns: 1fr;
       }
@@ -206,7 +212,7 @@
       }
     }
 
-    @media (max-width: 550px) {
+    @media (max-width: 600px) {
       .war-room {
         padding: 14px;
       }
@@ -215,7 +221,16 @@
         font-size: 28px;
       }
 
-      .comparison-grid,
+      .comparison-table {
+        grid-template-columns: 1fr 1fr 1fr;
+        font-size: 12px;
+      }
+
+      .comparison-cell,
+      .comparison-header {
+        padding: 9px 5px;
+      }
+
       .score-grid,
       .projection-summary {
         grid-template-columns: 1fr;
@@ -242,68 +257,59 @@
     <div class="team-selectors">
 
       <div class="team-box">
-        <label>Away Team</label>
+        <label for="awayTeam">Away Team</label>
         <select id="awayTeam">
-          <option>Select Away Team</option>
+          <option value="">Select Away Team</option>
         </select>
       </div>
 
       <div class="vs">VS</div>
 
       <div class="team-box">
-        <label>Home Team</label>
+        <label for="homeTeam">Home Team</label>
         <select id="homeTeam">
-          <option>Select Home Team</option>
+          <option value="">Select Home Team</option>
         </select>
       </div>
 
     </div>
-
   </div>
 
   <h2 class="section-title">TEAM COMPARISON</h2>
 
-  <div class="comparison-grid">
+  <div class="comparison-table">
 
-    <div class="stat-card">
-      <div class="stat-name">OFFENSIVE PPA</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-header" id="awayHeader">AWAY</div>
+    <div class="comparison-header">METRIC</div>
+    <div class="comparison-header" id="homeHeader">HOME</div>
 
-    <div class="stat-card">
-      <div class="stat-name">DEFENSIVE PPA</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awayOffPPA">—</div>
+    <div class="comparison-cell metric-name">OFFENSIVE PPA</div>
+    <div class="comparison-cell metric-value" id="homeOffPPA">—</div>
 
-    <div class="stat-card">
-      <div class="stat-name">SUCCESS RATE</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awayDefPPA">—</div>
+    <div class="comparison-cell metric-name">DEFENSIVE PPA</div>
+    <div class="comparison-cell metric-value" id="homeDefPPA">—</div>
 
-    <div class="stat-card">
-      <div class="stat-name">EXPLOSIVENESS</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awaySuccess">—</div>
+    <div class="comparison-cell metric-name">SUCCESS RATE</div>
+    <div class="comparison-cell metric-value" id="homeSuccess">—</div>
 
-    <div class="stat-card">
-      <div class="stat-name">POINTS PER OPPORTUNITY</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awayExplosive">—</div>
+    <div class="comparison-cell metric-name">EXPLOSIVENESS</div>
+    <div class="comparison-cell metric-value" id="homeExplosive">—</div>
 
-    <div class="stat-card">
-      <div class="stat-name">DEF SUCCESS RATE</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awayPPO">—</div>
+    <div class="comparison-cell metric-name">POINTS PER OPPORTUNITY</div>
+    <div class="comparison-cell metric-value" id="homePPO">—</div>
 
-    <div class="stat-card">
-      <div class="stat-name">DEF EXPLOSIVENESS</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awayDefSuccess">—</div>
+    <div class="comparison-cell metric-name">DEF SUCCESS RATE</div>
+    <div class="comparison-cell metric-value" id="homeDefSuccess">—</div>
 
-    <div class="stat-card">
-      <div class="stat-name">SOS</div>
-      <div class="stat-value">—</div>
-    </div>
+    <div class="comparison-cell metric-value" id="awayDefExplosive">—</div>
+    <div class="comparison-cell metric-name">DEF EXPLOSIVENESS</div>
+    <div class="comparison-cell metric-value" id="homeDefExplosive">—</div>
 
   </div>
 
@@ -314,13 +320,17 @@
     <div class="score-grid">
 
       <div class="score-card">
-        <div class="score-label">AWAY PROJECTED SCORE</div>
-        <div class="score">—</div>
+        <div class="score-label" id="awayScoreLabel">
+          AWAY PROJECTED SCORE
+        </div>
+        <div class="score" id="awayScore">—</div>
       </div>
 
       <div class="score-card">
-        <div class="score-label">HOME PROJECTED SCORE</div>
-        <div class="score">—</div>
+        <div class="score-label" id="homeScoreLabel">
+          HOME PROJECTED SCORE
+        </div>
+        <div class="score" id="homeScore">—</div>
       </div>
 
     </div>
@@ -329,178 +339,285 @@
 
       <div class="summary-box">
         <div class="summary-label">PROJECTED TOTAL</div>
-        <div class="summary-value">—</div>
+        <div class="summary-value" id="projectedTotal">—</div>
       </div>
 
       <div class="summary-box">
         <div class="summary-label">PROJECTED MARGIN</div>
-        <div class="summary-value">—</div>
+        <div class="summary-value" id="projectedMargin">—</div>
       </div>
 
     </div>
 
-    <div class="status">
-      Select two teams to begin matchup analysis.
+    <div class="status" id="status">
+      Loading 2026 College Football data...
     </div>
 
   </div>
 
 </div>
+
 <script>
-const teams = [
-  "Air Force",
-  "Akron",
-  "Alabama",
-  "Appalachian State",
-  "Arizona",
-  "Arizona State",
-  "Arkansas",
-  "Arkansas State",
-  "Army",
-  "Auburn",
-  "Ball State",
-  "Baylor",
-  "Boise State",
-  "Boston College",
-  "Bowling Green",
-  "Buffalo",
-  "BYU",
-  "California",
-  "Central Michigan",
-  "Charlotte",
-  "Cincinnati",
-  "Clemson",
-  "Coastal Carolina",
-  "Colorado",
-  "Colorado State",
-  "Delaware",
-  "Duke",
-  "East Carolina",
-  "Eastern Michigan",
-  "FIU",
-  "Florida",
-  "Florida Atlantic",
-  "Florida State",
-  "Fresno State",
-  "Georgia",
-  "Georgia Southern",
-  "Georgia State",
-  "Georgia Tech",
-  "Hawaii",
-  "Houston",
-  "Illinois",
-  "Indiana",
-  "Iowa",
-  "Iowa State",
-  "Jacksonville State",
-  "James Madison",
-  "Kansas",
-  "Kansas State",
-  "Kennesaw State",
-  "Kent State",
-  "Kentucky",
-  "Liberty",
-  "Louisiana",
-  "Louisiana Tech",
-  "Louisville",
-  "LSU",
-  "Marshall",
-  "Maryland",
-  "Memphis",
-  "Miami (FL)",
-  "Miami (OH)",
-  "Michigan",
-  "Michigan State",
-  "Middle Tennessee",
-  "Minnesota",
-  "Mississippi State",
-  "Missouri",
-  "Navy",
-  "NC State",
-  "Nebraska",
-  "Nevada",
-  "New Mexico",
-  "New Mexico State",
-  "North Carolina",
-  "North Texas",
-  "Northern Illinois",
-  "Northwestern",
-  "Notre Dame",
-  "Ohio",
-  "Ohio State",
-  "Oklahoma",
-  "Oklahoma State",
-  "Old Dominion",
-  "Ole Miss",
-  "Oregon",
-  "Oregon State",
-  "Penn State",
-  "Pittsburgh",
-  "Purdue",
-  "Rice",
-  "Rutgers",
-  "Sam Houston",
-  "San Diego State",
-  "San Jose State",
-  "SMU",
-  "South Alabama",
-  "South Carolina",
-  "South Florida",
-  "Southern Miss",
-  "Stanford",
-  "Syracuse",
-  "TCU",
-  "Temple",
-  "Tennessee",
-  "Texas",
-  "Texas A&M",
-  "Texas State",
-  "Texas Tech",
-  "Toledo",
-  "Troy",
-  "Tulane",
-  "Tulsa",
-  "UAB",
-  "UCF",
-  "UCLA",
-  "UConn",
-  "UL Monroe",
-  "UMass",
-  "UNLV",
-  "USC",
-  "UTEP",
-  "UTSA",
-  "Utah",
-  "Utah State",
-  "Vanderbilt",
-  "Virginia",
-  "Virginia Tech",
-  "Wake Forest",
-  "Washington",
-  "Washington State",
-  "West Virginia",
-  "Western Kentucky",
-  "Western Michigan",
-  "Wisconsin",
-  "Wyoming"
-];
 
-const awaySelect = document.getElementById("awayTeam");
-const homeSelect = document.getElementById("homeTeam");
+let cfbData = [];
 
-teams.forEach(team => {
+/*
+  These aliases handle cases where the name displayed
+  in our dropdown differs from the name used by CFBD.
+*/
+const teamAliases = {
+  "Appalachian State": "App State"
+};
 
-  const awayOption = document.createElement("option");
-  awayOption.value = team;
-  awayOption.textContent = team;
-  awaySelect.appendChild(awayOption);
 
-  const homeOption = document.createElement("option");
-  homeOption.value = team;
-  homeOption.textContent = team;
-  homeSelect.appendChild(homeOption);
+/*
+  Convert decimal rates such as 0.47619
+  into percentages such as 47.6%.
+*/
+function formatPercent(value) {
+  if (value === null || value === undefined) return "—";
 
-});
+  return (value * 100).toFixed(1) + "%";
+}
+
+
+/*
+  Format regular decimal statistics.
+*/
+function formatNumber(value, decimals = 3) {
+  if (value === null || value === undefined) return "—";
+
+  return Number(value).toFixed(decimals);
+}
+
+
+/*
+  Find the CFBD record belonging to a selected team.
+*/
+function findTeam(teamName) {
+
+  if (!teamName) return null;
+
+  const cfbdName = teamAliases[teamName] || teamName;
+
+  return cfbData.find(team => team.team === cfbdName) || null;
+}
+
+
+/*
+  Clear one side of the comparison table.
+*/
+function clearSide(side) {
+
+  document.getElementById(side + "OffPPA").textContent = "—";
+  document.getElementById(side + "DefPPA").textContent = "—";
+  document.getElementById(side + "Success").textContent = "—";
+  document.getElementById(side + "Explosive").textContent = "—";
+  document.getElementById(side + "PPO").textContent = "—";
+  document.getElementById(side + "DefSuccess").textContent = "—";
+  document.getElementById(side + "DefExplosive").textContent = "—";
+}
+
+
+/*
+  Display the real advanced statistics for one team.
+*/
+function displayTeam(side, team) {
+
+  if (!team) {
+    clearSide(side);
+    return;
+  }
+
+  document.getElementById(side + "OffPPA").textContent =
+    formatNumber(team.offense?.ppa);
+
+  document.getElementById(side + "DefPPA").textContent =
+    formatNumber(team.defense?.ppa);
+
+  document.getElementById(side + "Success").textContent =
+    formatPercent(team.offense?.successRate);
+
+  document.getElementById(side + "Explosive").textContent =
+    formatNumber(team.offense?.explosiveness);
+
+  document.getElementById(side + "PPO").textContent =
+    formatNumber(team.offense?.pointsPerOpportunity, 2);
+
+  document.getElementById(side + "DefSuccess").textContent =
+    formatPercent(team.defense?.successRate);
+
+  document.getElementById(side + "DefExplosive").textContent =
+    formatNumber(team.defense?.explosiveness);
+}
+
+
+/*
+  Update the entire matchup whenever Doc changes a team.
+*/
+function updateMatchup() {
+
+  const awayName = document.getElementById("awayTeam").value;
+  const homeName = document.getElementById("homeTeam").value;
+
+  const awayTeam = findTeam(awayName);
+  const homeTeam = findTeam(homeName);
+
+  document.getElementById("awayHeader").textContent =
+    awayName || "AWAY";
+
+  document.getElementById("homeHeader").textContent =
+    homeName || "HOME";
+
+  document.getElementById("awayScoreLabel").textContent =
+    awayName ? awayName.toUpperCase() + " PROJECTED SCORE" : "AWAY PROJECTED SCORE";
+
+  document.getElementById("homeScoreLabel").textContent =
+    homeName ? homeName.toUpperCase() + " PROJECTED SCORE" : "HOME PROJECTED SCORE";
+
+  displayTeam("away", awayTeam);
+  displayTeam("home", homeTeam);
+
+
+  /*
+    We intentionally leave the scoring engine blank for now.
+    First we verify that the real CFBD statistics are loading
+    correctly before building the prediction formula.
+  */
+  document.getElementById("awayScore").textContent = "—";
+  document.getElementById("homeScore").textContent = "—";
+  document.getElementById("projectedTotal").textContent = "—";
+  document.getElementById("projectedMargin").textContent = "—";
+
+
+  if (!awayName || !homeName) {
+
+    document.getElementById("status").textContent =
+      "Select two teams to begin matchup analysis.";
+
+    return;
+  }
+
+
+  if (!awayTeam || !homeTeam) {
+
+    const missingTeams = [];
+
+    if (!awayTeam) missingTeams.push(awayName);
+    if (!homeTeam) missingTeams.push(homeName);
+
+    document.getElementById("status").innerHTML =
+      '<span class="error">Data match not found for: ' +
+      missingTeams.join(", ") +
+      '</span>';
+
+    return;
+  }
+
+
+  document.getElementById("status").textContent =
+    "2026 advanced statistics loaded successfully for " +
+    awayName +
+    " vs " +
+    homeName +
+    ".";
+}
+
+
+/*
+  Load the real CFBD JSON file created by our
+  GitHub Actions workflow.
+*/
+async function loadCFBData() {
+
+  const status = document.getElementById("status");
+
+  try {
+
+    const response = await fetch(
+      "data/advanced-2026.json?updated=" + Date.now()
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "HTTP " + response.status + " while loading advanced-2026.json"
+      );
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("The advanced statistics file is empty.");
+    }
+
+    cfbData = data;
+
+
+    /*
+      Build our dropdowns from the ACTUAL teams returned
+      by CFBD. This prevents us from maintaining a giant
+      hand-written team list.
+    */
+    const awaySelect = document.getElementById("awayTeam");
+    const homeSelect = document.getElementById("homeTeam");
+
+
+    const displayTeams = cfbData
+      .map(team => team.team)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+
+    displayTeams.forEach(teamName => {
+
+      const awayOption = document.createElement("option");
+      awayOption.value = teamName;
+      awayOption.textContent = teamName;
+      awaySelect.appendChild(awayOption);
+
+      const homeOption = document.createElement("option");
+      homeOption.value = teamName;
+      homeOption.textContent = teamName;
+      homeSelect.appendChild(homeOption);
+
+    });
+
+
+    status.textContent =
+      cfbData.length +
+      " teams loaded from 2026 CollegeFootballData.";
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    status.innerHTML =
+      '<span class="error">Could not load the 2026 advanced statistics.</span>';
+
+  }
+}
+
+
+/*
+  Listen for team selections.
+*/
+document
+  .getElementById("awayTeam")
+  .addEventListener("change", updateMatchup);
+
+document
+  .getElementById("homeTeam")
+  .addEventListener("change", updateMatchup);
+
+
+/*
+  Start the War Room.
+*/
+loadCFBData();
+
 </script>
+
 </body>
 </html>
