@@ -1,0 +1,56 @@
+name: Update 2026 CFB Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create data folder
+        run: mkdir -p data
+
+      - name: Download 2026 advanced team stats
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CFBD_API_KEY" \
+            "https://api.collegefootballdata.com/stats/season/advanced?year=2026&excludeGarbageTime=true" \
+            -o data/advanced-2026.json
+
+      - name: Verify downloaded data
+        run: |
+          echo "Downloaded file size:"
+          wc -c data/advanced-2026.json
+
+          echo "Number of teams:"
+          jq 'length' data/advanced-2026.json
+
+          if [ "$(jq 'length' data/advanced-2026.json)" -eq 0 ]; then
+            echo "ERROR: CFBD returned no team data."
+            exit 1
+          fi
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/advanced-2026.json
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update 2026 CFB advanced stats"
+            git push
+          fi
