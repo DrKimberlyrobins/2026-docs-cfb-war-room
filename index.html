@@ -545,70 +545,66 @@ let cfbData = [];
 let sosData = [];
 let scoringData = [];
 
-/* ------------------------------
-   FORMAT FUNCTIONS
------------------------------- */
+
+/* =========================================================
+   FORMATTING
+========================================================= */
 
 function formatPercent(value) {
-
-  if (value === null || value === undefined) {
-    return "—";
-  }
-
-  return (value * 100).toFixed(1) + "%";
+  if (value === null || value === undefined) return "—";
+  return (Number(value) * 100).toFixed(1) + "%";
 }
 
-
 function formatNumber(value, decimals = 3) {
-
-  if (value === null || value === undefined) {
-    return "—";
-  }
-
+  if (value === null || value === undefined) return "—";
   return Number(value).toFixed(decimals);
 }
 
-
 function formatSOS(value) {
-
-  if (value === null || value === undefined) {
-    return "—";
-  }
-
+  if (value === null || value === undefined) return "—";
   return "#" + value;
 }
 
+function formatProjection(value) {
+  if (!Number.isFinite(value)) return "—";
+  return value.toFixed(1);
+}
 
-/* ------------------------------
-   FIND TEAM DATA
------------------------------- */
+
+/* =========================================================
+   FIND DATA
+========================================================= */
 
 function findTeam(teamName) {
+  if (!teamName) return null;
 
-  if (!teamName) {
-    return null;
-  }
-
-  return cfbData.find(team => team.team === teamName) || null;
+  return cfbData.find(
+    team => team.team === teamName
+  ) || null;
 }
-
 
 function findSOS(teamName) {
+  if (!teamName) return null;
 
-  if (!teamName) {
-    return null;
-  }
+  return sosData.find(
+    team => team.team === teamName
+  ) || null;
+}
 
-  return sosData.find(team => team.team === teamName) || null;
+function findScoring(teamName) {
+  if (!teamName) return null;
+
+  return scoringData.find(
+    team => team.team === teamName
+  ) || null;
 }
 
 
-/* ------------------------------
-   REMOVE GREEN
------------------------------- */
+/* =========================================================
+   GREEN SIGNAL CONTROL
+========================================================= */
 
 function removeGreen() {
-
   document
     .querySelectorAll(".green")
     .forEach(element => {
@@ -617,12 +613,11 @@ function removeGreen() {
 }
 
 
-/* ------------------------------
-   CLEAR TEAM SIDE
------------------------------- */
+/* =========================================================
+   TEAM COMPARISON
+========================================================= */
 
 function clearSide(side) {
-
   document.getElementById(side + "OffPPA").textContent = "—";
   document.getElementById(side + "DefPPA").textContent = "—";
   document.getElementById(side + "Success").textContent = "—";
@@ -633,11 +628,6 @@ function clearSide(side) {
   document.getElementById(side + "SOS").textContent = "—";
 }
 
-
-/* ------------------------------
-   DISPLAY REAL CFBD DATA
------------------------------- */
-
 function displayTeam(side, team, sosTeam) {
 
   if (!team) {
@@ -645,34 +635,26 @@ function displayTeam(side, team, sosTeam) {
     return;
   }
 
-
   document.getElementById(side + "OffPPA").textContent =
     formatNumber(team.offense?.ppa);
-
 
   document.getElementById(side + "DefPPA").textContent =
     formatNumber(team.defense?.ppa);
 
-
   document.getElementById(side + "Success").textContent =
     formatPercent(team.offense?.successRate);
-
 
   document.getElementById(side + "Explosive").textContent =
     formatNumber(team.offense?.explosiveness);
 
-
   document.getElementById(side + "PPO").textContent =
     formatNumber(team.offense?.pointsPerOpportunity, 2);
-
 
   document.getElementById(side + "DefSuccess").textContent =
     formatPercent(team.defense?.successRate);
 
-
   document.getElementById(side + "DefExplosive").textContent =
     formatNumber(team.defense?.explosiveness);
-
 
   const sosRank =
     sosTeam?.resumeRanks?.strengthOfSchedule;
@@ -682,9 +664,177 @@ function displayTeam(side, team, sosTeam) {
 }
 
 
-/* ------------------------------
+/* =========================================================
+   SAMPLE-SIZE PROTECTION
+
+   Location performance is useful, but a one-game home/away
+   sample should not replace the overall team profile.
+
+   We therefore shrink the location average toward the
+   team's overall average.
+
+   4 location games = 50% location / 50% overall.
+   Fewer games = even more weight on overall performance.
+========================================================= */
+
+function blendedAverage(
+  overallValue,
+  locationValue,
+  locationGames
+) {
+
+  const overall = Number(overallValue);
+
+  if (!Number.isFinite(overall)) {
+    return null;
+  }
+
+  const location = Number(locationValue);
+  const games = Number(locationGames) || 0;
+
+  if (
+    !Number.isFinite(location) ||
+    games <= 0
+  ) {
+    return overall;
+  }
+
+  const LOCATION_STABILIZER = 4;
+
+  const locationWeight =
+    games / (games + LOCATION_STABILIZER);
+
+  return (
+    locationWeight * location +
+    (1 - locationWeight) * overall
+  );
+}
+
+
+/* =========================================================
+   PERIOD DEFINITIONS
+========================================================= */
+
+const periodFields = {
+
+  q1: {
+    scored: "avg1QScored",
+    allowed: "avg1QAllowed"
+  },
+
+  h1: {
+    scored: "avg1HScored",
+    allowed: "avg1HAllowed"
+  },
+
+  full: {
+    scored: "avgFullScored",
+    allowed: "avgFullAllowed"
+  }
+
+};
+
+
+/* =========================================================
+   LOCATION-ADJUSTED TEAM TENDENCY
+========================================================= */
+
+function getScoringTendency(
+  profile,
+  location,
+  field
+) {
+
+  if (!profile) return null;
+
+  const overallValue =
+    profile[field];
+
+  const locationProfile =
+    profile[location];
+
+  const locationValue =
+    locationProfile?.[field];
+
+  const locationGames =
+    locationProfile?.games || 0;
+
+  return blendedAverage(
+    overallValue,
+    locationValue,
+    locationGames
+  );
+}
+
+
+/* =========================================================
+   BASELINE MATCHUP PROJECTION
+
+   Each team's score begins with the interaction between:
+
+   1. That team's observed scoring tendency.
+   2. The opponent's observed points-allowed tendency.
+
+   Both sides use sample-size-protected location data.
+
+   No advanced-stat weights are invented here.
+========================================================= */
+
+function projectTeamScore(
+  offenseProfile,
+  defenseProfile,
+  offenseLocation,
+  defenseLocation,
+  period
+) {
+
+  const fields =
+    periodFields[period];
+
+  if (!fields) return null;
+
+
+  const offenseScoring =
+    getScoringTendency(
+      offenseProfile,
+      offenseLocation,
+      fields.scored
+    );
+
+
+  const defenseAllowed =
+    getScoringTendency(
+      defenseProfile,
+      defenseLocation,
+      fields.allowed
+    );
+
+
+  if (
+    !Number.isFinite(offenseScoring) ||
+    !Number.isFinite(defenseAllowed)
+  ) {
+    return null;
+  }
+
+
+  /*
+     Neutral interaction baseline.
+
+     We are intentionally NOT applying arbitrary
+     PPA/PPO/SOS multipliers here.
+  */
+
+  return (
+    offenseScoring +
+    defenseAllowed
+  ) / 2;
+}
+
+
+/* =========================================================
    CLEAR PROJECTIONS
------------------------------- */
+========================================================= */
 
 function clearPredictions() {
 
@@ -705,20 +855,195 @@ function clearPredictions() {
     "marginFull"
   ];
 
-
   ids.forEach(id => {
-
     document.getElementById(id).textContent = "—";
-
   });
 }
 
 
-/* ------------------------------
-   UPDATE TEAM NAMES
------------------------------- */
+/* =========================================================
+   DISPLAY ONE PERIOD
+========================================================= */
 
-function updatePredictionLabels(awayName, homeName) {
+function displayPeriodProjection(
+  periodKey,
+  awayScore,
+  homeScore
+) {
+
+  if (
+    !Number.isFinite(awayScore) ||
+    !Number.isFinite(homeScore)
+  ) {
+    return;
+  }
+
+  const total =
+    awayScore + homeScore;
+
+  const margin =
+    Math.abs(homeScore - awayScore);
+
+
+  let awayId;
+  let homeId;
+  let totalId;
+  let marginId;
+
+
+  if (periodKey === "q1") {
+
+    awayId = "away1Q";
+    homeId = "home1Q";
+    totalId = "total1Q";
+    marginId = "margin1Q";
+
+  }
+
+  else if (periodKey === "h1") {
+
+    awayId = "away1H";
+    homeId = "home1H";
+    totalId = "total1H";
+    marginId = "margin1H";
+
+  }
+
+  else {
+
+    awayId = "awayFull";
+    homeId = "homeFull";
+    totalId = "totalFull";
+    marginId = "marginFull";
+
+  }
+
+
+  document.getElementById(awayId).textContent =
+    formatProjection(awayScore);
+
+  document.getElementById(homeId).textContent =
+    formatProjection(homeScore);
+
+  document.getElementById(totalId).textContent =
+    formatProjection(total);
+
+  document.getElementById(marginId).textContent =
+    formatProjection(margin);
+}
+
+
+/* =========================================================
+   RUN BASELINE SCORING ENGINE
+========================================================= */
+
+function runScoringEngine(
+  awayScoring,
+  homeScoring
+) {
+
+  clearPredictions();
+
+  if (!awayScoring || !homeScoring) {
+    return false;
+  }
+
+
+  const away1Q =
+    projectTeamScore(
+      awayScoring,
+      homeScoring,
+      "away",
+      "home",
+      "q1"
+    );
+
+  const home1Q =
+    projectTeamScore(
+      homeScoring,
+      awayScoring,
+      "home",
+      "away",
+      "q1"
+    );
+
+
+  const away1H =
+    projectTeamScore(
+      awayScoring,
+      homeScoring,
+      "away",
+      "home",
+      "h1"
+    );
+
+  const home1H =
+    projectTeamScore(
+      homeScoring,
+      awayScoring,
+      "home",
+      "away",
+      "h1"
+    );
+
+
+  const awayFull =
+    projectTeamScore(
+      awayScoring,
+      homeScoring,
+      "away",
+      "home",
+      "full"
+    );
+
+  const homeFull =
+    projectTeamScore(
+      homeScoring,
+      awayScoring,
+      "home",
+      "away",
+      "full"
+    );
+
+
+  displayPeriodProjection(
+    "q1",
+    away1Q,
+    home1Q
+  );
+
+  displayPeriodProjection(
+    "h1",
+    away1H,
+    home1H
+  );
+
+  displayPeriodProjection(
+    "full",
+    awayFull,
+    homeFull
+  );
+
+
+  return (
+    Number.isFinite(away1Q) &&
+    Number.isFinite(home1Q) &&
+    Number.isFinite(away1H) &&
+    Number.isFinite(home1H) &&
+    Number.isFinite(awayFull) &&
+    Number.isFinite(homeFull)
+  );
+}
+
+
+/* =========================================================
+   UPDATE TEAM NAMES
+========================================================= */
+
+function updatePredictionLabels(
+  awayName,
+  homeName
+) {
 
   document.getElementById("awayPredictionHeader").textContent =
     awayName || "AWAY SCORE";
@@ -749,13 +1074,15 @@ function updatePredictionLabels(awayName, homeName) {
 }
 
 
-/* ------------------------------
+/* =========================================================
    UPDATE MATCHUP
------------------------------- */
+========================================================= */
 
 function updateMatchup() {
 
   removeGreen();
+  clearPredictions();
+
 
   const awayName =
     document.getElementById("awayTeam").value;
@@ -776,6 +1103,13 @@ function updateMatchup() {
 
   const homeSOS =
     findSOS(homeName);
+
+
+  const awayScoring =
+    findScoring(awayName);
+
+  const homeScoring =
+    findScoring(homeName);
 
 
   document.getElementById("awayHeader").textContent =
@@ -804,16 +1138,6 @@ function updateMatchup() {
   );
 
 
-  /*
-    Prediction numbers intentionally remain blank.
-
-    We are NOT creating a scoring formula until
-    the underlying inputs and model are verified.
-  */
-
-  clearPredictions();
-
-
   if (!awayName || !homeName) {
 
     document.getElementById("status").textContent =
@@ -826,25 +1150,49 @@ function updateMatchup() {
   if (!awayTeam || !homeTeam) {
 
     document.getElementById("status").textContent =
-      "Team data could not be matched.";
+      "Advanced team data could not be matched.";
+
+    return;
+  }
+
+
+  if (!awayScoring || !homeScoring) {
+
+    document.getElementById("status").textContent =
+      "Scoring history is not available for both teams.";
+
+    return;
+  }
+
+
+  const projectionComplete =
+    runScoringEngine(
+      awayScoring,
+      homeScoring
+    );
+
+
+  if (!projectionComplete) {
+
+    document.getElementById("status").textContent =
+      "The scoring profiles loaded, but a complete projection could not be calculated.";
 
     return;
   }
 
 
   document.getElementById("status").textContent =
-    "2026 advanced statistics and SOS loaded successfully for " +
+    "Baseline 2026 scoring projection loaded for " +
     awayName +
     " vs " +
     homeName +
-    ".";
-
+    ". Advanced metrics are displayed but are not yet used as unvalidated scoring weights.";
 }
 
 
-/* ------------------------------
+/* =========================================================
    LOAD 2026 DATA
------------------------------- */
+========================================================= */
 
 async function loadCFBData() {
 
@@ -854,40 +1202,35 @@ async function loadCFBData() {
 
   try {
 
-    /*
-      Load advanced statistics and SOS together.
-      Cache-busting timestamp makes GitHub Pages
-      request the newest files.
-    */
+    const timestamp =
+      Date.now();
 
-    const timestamp = Date.now();
 
     const [
-  advancedResponse,
-  sosResponse,
-  scoringResponse
-] = await Promise.all([
+      advancedResponse,
+      sosResponse,
+      scoringResponse
+    ] = await Promise.all([
 
-  fetch(
-    "data/advanced-2026.json?updated=" +
-    timestamp
-  ),
+      fetch(
+        "data/advanced-2026.json?updated=" +
+        timestamp
+      ),
 
-  fetch(
-    "data/sos-2026.json?updated=" +
-    timestamp
-  ),
+      fetch(
+        "data/sos-2026.json?updated=" +
+        timestamp
+      ),
 
-  fetch(
-    "data/scoring-2026.json?updated=" +
-    timestamp
-  )
+      fetch(
+        "data/scoring-2026.json?updated=" +
+        timestamp
+      )
 
-]);
+    ]);
 
 
     if (!advancedResponse.ok) {
-
       throw new Error(
         "Advanced stats HTTP " +
         advancedResponse.status
@@ -896,40 +1239,38 @@ async function loadCFBData() {
 
 
     if (!sosResponse.ok) {
-
       throw new Error(
         "SOS HTTP " +
         sosResponse.status
       );
     }
-    
-    if (!scoringResponse.ok) {
 
-  throw new Error(
-    "Scoring HTTP " +
-    scoringResponse.status
-  );
-}
+
+    if (!scoringResponse.ok) {
+      throw new Error(
+        "Scoring HTTP " +
+        scoringResponse.status
+      );
+    }
 
 
     const [
-  advancedData,
-  loadedSOSData,
-  loadedScoringData
-] = await Promise.all([
+      advancedData,
+      loadedSOSData,
+      loadedScoringData
+    ] = await Promise.all([
 
-  advancedResponse.json(),
-  sosResponse.json(),
-  scoringResponse.json()
+      advancedResponse.json(),
+      sosResponse.json(),
+      scoringResponse.json()
 
-]);
+    ]);
 
 
     if (
       !Array.isArray(advancedData) ||
       advancedData.length === 0
     ) {
-
       throw new Error(
         "Advanced statistics file is empty."
       );
@@ -940,16 +1281,30 @@ async function loadCFBData() {
       !Array.isArray(loadedSOSData) ||
       loadedSOSData.length === 0
     ) {
-
       throw new Error(
         "SOS file is empty."
       );
     }
 
 
-    cfbData = advancedData;
-    sosData = loadedSOSData;
-    scoringData = loadedScoringData;
+    if (
+      !Array.isArray(loadedScoringData) ||
+      loadedScoringData.length === 0
+    ) {
+      throw new Error(
+        "Scoring profile file is empty."
+      );
+    }
+
+
+    cfbData =
+      advancedData;
+
+    sosData =
+      loadedSOSData;
+
+    scoringData =
+      loadedScoringData;
 
 
     const awaySelect =
@@ -1002,8 +1357,8 @@ async function loadCFBData() {
 
 
     status.textContent =
-  cfbData.length +
-  " teams loaded with advanced stats, SOS, and scoring profiles.";
+      cfbData.length +
+      " teams loaded with advanced stats, SOS, and scoring profiles.";
 
   }
 
@@ -1012,16 +1367,15 @@ async function loadCFBData() {
     console.error(error);
 
     status.textContent =
-      "Could not load the 2026 advanced statistics and SOS.";
+      "Could not load all required 2026 War Room data.";
 
   }
-
 }
 
 
-/* ------------------------------
+/* =========================================================
    EVENT LISTENERS
------------------------------- */
+========================================================= */
 
 document
   .getElementById("awayTeam")
@@ -1039,12 +1393,11 @@ document
   );
 
 
-/* ------------------------------
+/* =========================================================
    START WAR ROOM
------------------------------- */
+========================================================= */
 
 loadCFBData();
-
 
 </script>
 
