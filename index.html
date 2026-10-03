@@ -602,7 +602,209 @@ function removeGreen() {
       element.classList.remove("green");
     });
 }
+/* =========================================================
+   GREEN ADVANTAGE SYSTEM
 
+   GREEN does NOT mean simply "better."
+   GREEN means the difference clears our minimum threshold.
+
+   Higher is better:
+   - Offensive PPA
+   - Success Rate
+   - Explosiveness
+   - Points Per Opportunity
+
+   Lower is better:
+   - Defensive PPA
+   - Defensive Success Rate
+   - Defensive Explosiveness
+
+   SOS stays neutral. It is context for the model,
+   not a standalone green signal.
+========================================================= */
+
+function addGreen(id) {
+  const element = document.getElementById(id);
+
+  if (element) {
+    element.classList.add("green");
+  }
+}
+
+
+function compareHigherBetter(
+  awayValue,
+  homeValue,
+  threshold,
+  awayId,
+  homeId
+) {
+
+  const away = Number(awayValue);
+  const home = Number(homeValue);
+
+  if (
+    !Number.isFinite(away) ||
+    !Number.isFinite(home)
+  ) {
+    return;
+  }
+
+  const difference = away - home;
+
+  if (difference >= threshold) {
+    addGreen(awayId);
+  }
+
+  else if (difference <= -threshold) {
+    addGreen(homeId);
+  }
+}
+
+
+function compareLowerBetter(
+  awayValue,
+  homeValue,
+  threshold,
+  awayId,
+  homeId
+) {
+
+  const away = Number(awayValue);
+  const home = Number(homeValue);
+
+  if (
+    !Number.isFinite(away) ||
+    !Number.isFinite(home)
+  ) {
+    return;
+  }
+
+  const difference = away - home;
+
+  if (difference <= -threshold) {
+    addGreen(awayId);
+  }
+
+  else if (difference >= threshold) {
+    addGreen(homeId);
+  }
+}
+
+
+function applyMetricGreens(
+  awayTeam,
+  homeTeam
+) {
+
+  if (!awayTeam || !homeTeam) {
+    return;
+  }
+
+
+  /* OFFENSIVE PPA
+     Higher is better.
+     Require at least 0.10 difference.
+  */
+
+  compareHigherBetter(
+    awayTeam.offense?.ppa,
+    homeTeam.offense?.ppa,
+    0.10,
+    "awayOffPPA",
+    "homeOffPPA"
+  );
+
+
+  /* DEFENSIVE PPA
+     Lower is better.
+     Require at least 0.05 difference.
+  */
+
+  compareLowerBetter(
+    awayTeam.defense?.ppa,
+    homeTeam.defense?.ppa,
+    0.05,
+    "awayDefPPA",
+    "homeDefPPA"
+  );
+
+
+  /* OFFENSIVE SUCCESS RATE
+     Higher is better.
+     0.05 = five percentage points.
+  */
+
+  compareHigherBetter(
+    awayTeam.offense?.successRate,
+    homeTeam.offense?.successRate,
+    0.05,
+    "awaySuccess",
+    "homeSuccess"
+  );
+
+
+  /* OFFENSIVE EXPLOSIVENESS
+     Higher is better.
+  */
+
+  compareHigherBetter(
+    awayTeam.offense?.explosiveness,
+    homeTeam.offense?.explosiveness,
+    0.15,
+    "awayExplosive",
+    "homeExplosive"
+  );
+
+
+  /* POINTS PER OPPORTUNITY
+     Higher is better.
+  */
+
+  compareHigherBetter(
+    awayTeam.offense?.pointsPerOpportunity,
+    homeTeam.offense?.pointsPerOpportunity,
+    0.75,
+    "awayPPO",
+    "homePPO"
+  );
+
+
+  /* DEFENSIVE SUCCESS RATE
+     Lower is better.
+     Require five percentage points.
+  */
+
+  compareLowerBetter(
+    awayTeam.defense?.successRate,
+    homeTeam.defense?.successRate,
+    0.05,
+    "awayDefSuccess",
+    "homeDefSuccess"
+  );
+
+
+  /* DEFENSIVE EXPLOSIVENESS
+     Lower is better.
+  */
+
+  compareLowerBetter(
+    awayTeam.defense?.explosiveness,
+    homeTeam.defense?.explosiveness,
+    0.15,
+    "awayDefExplosive",
+    "homeDefExplosive"
+  );
+
+
+  /*
+     NO SOS GREEN.
+
+     SOS is still being used by our scoring engine,
+     but we do not declare a team statistically better
+     merely because it played the stronger schedule.
+  */
+}
 
 /* =========================================================
    TEAM COMPARISON
@@ -1404,6 +1606,10 @@ function updateMatchup() {
 
   displayTeam(
     "home",
+    applyMetricGreens(
+  awayTeam,
+  homeTeam
+);
     homeTeam,
     homeSOS
   );
