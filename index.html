@@ -543,7 +543,7 @@ select {
 
 let cfbData = [];
 let sosData = [];
-
+let scoringData = [];
 
 /* ------------------------------
    FORMAT FUNCTIONS
@@ -863,21 +863,27 @@ async function loadCFBData() {
     const timestamp = Date.now();
 
     const [
-      advancedResponse,
-      sosResponse
-    ] = await Promise.all([
+  advancedResponse,
+  sosResponse,
+  scoringResponse
+] = await Promise.all([
 
-      fetch(
-        "data/advanced-2026.json?updated=" +
-        timestamp
-      ),
+  fetch(
+    "data/advanced-2026.json?updated=" +
+    timestamp
+  ),
 
-      fetch(
-        "data/sos-2026.json?updated=" +
-        timestamp
-      )
+  fetch(
+    "data/sos-2026.json?updated=" +
+    timestamp
+  ),
 
-    ]);
+  fetch(
+    "data/scoring-2026.json?updated=" +
+    timestamp
+  )
+
+]);
 
 
     if (!advancedResponse.ok) {
@@ -896,17 +902,27 @@ async function loadCFBData() {
         sosResponse.status
       );
     }
+    
+    if (!scoringResponse.ok) {
+
+  throw new Error(
+    "Scoring HTTP " +
+    scoringResponse.status
+  );
+}
 
 
     const [
-      advancedData,
-      loadedSOSData
-    ] = await Promise.all([
+  advancedData,
+  loadedSOSData,
+  loadedScoringData
+] = await Promise.all([
 
-      advancedResponse.json(),
-      sosResponse.json()
+  advancedResponse.json(),
+  sosResponse.json(),
+  scoringResponse.json()
 
-    ]);
+]);
 
 
     if (
@@ -933,6 +949,7 @@ async function loadCFBData() {
 
     cfbData = advancedData;
     sosData = loadedSOSData;
+    scoringData = loadedScoringData;
 
 
     const awaySelect =
@@ -985,8 +1002,8 @@ async function loadCFBData() {
 
 
     status.textContent =
-      cfbData.length +
-      " teams loaded with 2026 advanced statistics and SOS.";
+  cfbData.length +
+  " teams loaded with advanced stats, SOS, and scoring profiles.";
 
   }
 
