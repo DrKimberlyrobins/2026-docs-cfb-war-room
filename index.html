@@ -1,242 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Doc's 2026 CFB War Room</title>
+<title>Doc's 2026 CFB War Room</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+* {
+  box-sizing: border-box;
+}
 
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #07111f;
-      color: #ffffff;
-    }
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #07111f;
+  color: white;
+}
 
-    .war-room {
-      width: 100%;
-      max-width: 1400px;
-      margin: auto;
-      padding: 24px;
-    }
+.war-room {
+  width: 100%;
+  max-width: 1400px;
+  margin: auto;
+  padding: 24px;
+}
 
-    .header {
-      text-align: center;
-      margin-bottom: 28px;
-    }
+/* HEADER */
 
-    .header h1 {
-      margin: 0;
-      font-size: 38px;
-      color: #f5c542;
-    }
+.header {
+  text-align: center;
+  margin-bottom: 28px;
+}
 
-    .header p {
-      margin-top: 8px;
-      color: #aab6c5;
-      font-size: 16px;
-    }
+.header h1 {
+  margin: 0;
+  font-size: 38px;
+  color: #f5c542;
+}
 
-    .matchup-panel {
-      background: #0d1b2a;
-      border: 1px solid #23364d;
-      border-radius: 16px;
-      padding: 22px;
-      margin-bottom: 24px;
-    }
+.header p {
+  margin-top: 8px;
+  color: #aab6c5;
+}
 
-    .matchup-title {
-      text-align: center;
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 20px;
-    }
+/* MATCHUP */
 
-    .team-selectors {
-      display: grid;
-      grid-template-columns: 1fr 90px 1fr;
-      gap: 18px;
-      align-items: center;
-    }
+.matchup-panel {
+  background: #0d1b2a;
+  border: 1px solid #23364d;
+  border-radius: 16px;
+  padding: 22px;
+  margin-bottom: 24px;
+}
 
-    .team-box label {
-      display: block;
-      margin-bottom: 8px;
-      color: #9fb0c3;
-      font-size: 14px;
-    }
+.matchup-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
 
-    select {
-      width: 100%;
-      padding: 14px;
-      border-radius: 10px;
-      border: 1px solid #34495e;
-      background: #07111f;
-      color: white;
-      font-size: 16px;
-    }
+.team-selectors {
+  display: grid;
+  grid-template-columns: 1fr 90px 1fr;
+  gap: 18px;
+  align-items: center;
+}
 
-    .vs {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      color: #f5c542;
-    }
+.team-box label {
+  display: block;
+  margin-bottom: 8px;
+  color: #9fb0c3;
+  font-size: 14px;
+}
 
-    .section-title {
-      margin: 30px 0 14px;
-      font-size: 22px;
-      color: #f5c542;
-    }
+select {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #34495e;
+  background: #07111f;
+  color: white;
+  font-size: 16px;
+}
 
-    .comparison-table {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-    }
+.vs {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #f5c542;
+}
 
-    .comparison-header,
-    .comparison-cell {
-      background: #0d1b2a;
-      border: 1px solid #23364d;
-      border-radius: 10px;
-      padding: 14px;
-      text-align: center;
-    }
+/* SECTION TITLES */
 
-    .comparison-header {
-      color: #f5c542;
-      font-weight: bold;
-      font-size: 17px;
-    }
+.section-title {
+  margin: 30px 0 14px;
+  font-size: 22px;
+  color: #f5c542;
+}
 
-    .metric-name {
-      color: #9fb0c3;
-      font-weight: bold;
-    }
+/* TEAM COMPARISON */
 
-    .metric-value {
-      font-size: 21px;
-      font-weight: bold;
-    }
+.comparison-table {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 8px;
+}
 
-    .prediction-engine {
-      margin-top: 28px;
-      background: #101d2c;
-      border: 2px solid #f5c542;
-      border-radius: 18px;
-      padding: 24px;
-    }
+.comparison-header,
+.comparison-cell {
+  background: #0d1b2a;
+  border: 1px solid #23364d;
+  border-radius: 9px;
+  padding: 13px;
+  text-align: center;
+}
 
-    .prediction-engine h2 {
-      text-align: center;
-      margin-top: 0;
-      color: #f5c542;
-    }
+.comparison-header {
+  color: #f5c542;
+  font-weight: bold;
+  font-size: 17px;
+}
 
-    .score-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 20px;
-    }
+.metric-name {
+  color: #9fb0c3;
+  font-weight: bold;
+  font-size: 13px;
+}
 
-    .score-card {
-      background: #07111f;
-      border-radius: 14px;
-      padding: 24px;
-      text-align: center;
-    }
+.metric-value {
+  font-size: 20px;
+  font-weight: bold;
+}
 
-    .score-label {
-      color: #9fb0c3;
-      font-size: 14px;
-    }
+/* ONLY SIGNAL COLOR */
 
-    .score {
-      font-size: 52px;
-      font-weight: bold;
-      margin-top: 8px;
-    }
+.green {
+  color: #35e36f !important;
+  font-weight: 800;
+}
 
-    .projection-summary {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-      margin-top: 20px;
-    }
+/* PREDICTION ENGINE */
 
-    .summary-box {
-      background: #07111f;
-      border-radius: 10px;
-      padding: 16px;
-      text-align: center;
-    }
+.prediction-engine {
+  margin-top: 30px;
+  background: #101d2c;
+  border: 2px solid #f5c542;
+  border-radius: 18px;
+  padding: 24px;
+}
 
-    .summary-label {
-      color: #9fb0c3;
-      font-size: 13px;
-    }
+.prediction-engine h2 {
+  text-align: center;
+  margin-top: 0;
+  color: #f5c542;
+}
 
-    .summary-value {
-      margin-top: 6px;
-      font-size: 24px;
-      font-weight: bold;
-    }
+.engine-subtitle {
+  text-align: center;
+  color: #9fb0c3;
+  margin-bottom: 22px;
+  font-size: 14px;
+}
 
-    .status {
-      text-align: center;
-      margin-top: 22px;
-      padding: 13px;
-      border-radius: 10px;
-      background: #182536;
-      color: #aab6c5;
-    }
+/* PREDICTION TABLE */
 
-    .error {
-      color: #ff6b6b;
-    }
+.prediction-table {
+  display: grid;
+  grid-template-columns: .7fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+}
 
-    @media (max-width: 850px) {
-      .team-selectors {
-        grid-template-columns: 1fr;
-      }
+.prediction-header {
+  background: #182536;
+  color: #f5c542;
+  border-radius: 9px;
+  padding: 13px 8px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+}
 
-      .vs {
-        padding: 4px;
-      }
-    }
+.prediction-cell {
+  background: #07111f;
+  border: 1px solid #23364d;
+  border-radius: 9px;
+  padding: 17px 8px;
+  text-align: center;
+}
 
-    @media (max-width: 600px) {
-      .war-room {
-        padding: 14px;
-      }
+.period {
+  color: #f5c542;
+  font-weight: bold;
+  font-size: 17px;
+}
 
-      .header h1 {
-        font-size: 28px;
-      }
+.projected-number {
+  font-size: 25px;
+  font-weight: bold;
+}
 
-      .comparison-table {
-        grid-template-columns: 1fr 1fr 1fr;
-        font-size: 12px;
-      }
+.team-label-small {
+  display: block;
+  color: #7f91a6;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
 
-      .comparison-cell,
-      .comparison-header {
-        padding: 9px 5px;
-      }
+.pass-rule {
+  margin-top: 20px;
+  background: #07111f;
+  border: 1px solid #23364d;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  color: #aab6c5;
+  font-size: 14px;
+}
 
-      .score-grid,
-      .projection-summary {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+.status {
+  text-align: center;
+  margin-top: 14px;
+  padding: 13px;
+  border-radius: 10px;
+  background: #182536;
+  color: #aab6c5;
+}
+
+.error {
+  color: white;
+  font-weight: bold;
+}
+
+/* MOBILE */
+
+@media (max-width: 850px) {
+
+  .team-selectors {
+    grid-template-columns: 1fr;
+  }
+
+  .vs {
+    padding: 4px;
+  }
+
+  .prediction-table {
+    grid-template-columns: .65fr 1fr 1fr 1fr 1fr;
+    gap: 4px;
+  }
+
+  .prediction-header,
+  .prediction-cell {
+    padding: 10px 4px;
+    font-size: 11px;
+  }
+
+  .projected-number {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .war-room {
+    padding: 12px;
+  }
+
+  .header h1 {
+    font-size: 27px;
+  }
+
+  .comparison-table {
+    grid-template-columns: 1fr 1.15fr 1fr;
+    gap: 4px;
+  }
+
+  .comparison-header,
+  .comparison-cell {
+    padding: 9px 4px;
+  }
+
+  .metric-value {
+    font-size: 16px;
+  }
+
+  .metric-name {
+    font-size: 10px;
+  }
+
+  .prediction-engine {
+    padding: 13px 8px;
+  }
+
+  .prediction-table {
+    gap: 3px;
+  }
+
+  .prediction-header {
+    font-size: 9px;
+    padding: 8px 2px;
+  }
+
+  .prediction-cell {
+    padding: 12px 2px;
+  }
+
+  .period {
+    font-size: 13px;
+  }
+
+  .projected-number {
+    font-size: 16px;
+  }
+}
+</style>
 </head>
 
 <body>
@@ -248,6 +325,8 @@
     <p>College Football Matchup & Scoring Prediction Engine</p>
   </div>
 
+  <!-- MATCHUP SELECTOR -->
+
   <div class="matchup-panel">
 
     <div class="matchup-title">
@@ -258,6 +337,7 @@
 
       <div class="team-box">
         <label for="awayTeam">Away Team</label>
+
         <select id="awayTeam">
           <option value="">Select Away Team</option>
         </select>
@@ -267,6 +347,7 @@
 
       <div class="team-box">
         <label for="homeTeam">Home Team</label>
+
         <select id="homeTeam">
           <option value="">Select Home Team</option>
         </select>
@@ -275,37 +356,54 @@
     </div>
   </div>
 
+  <!-- TEAM COMPARISON -->
+
   <h2 class="section-title">TEAM COMPARISON</h2>
 
   <div class="comparison-table">
 
-    <div class="comparison-header" id="awayHeader">AWAY</div>
-    <div class="comparison-header">METRIC</div>
-    <div class="comparison-header" id="homeHeader">HOME</div>
+    <div class="comparison-header" id="awayHeader">
+      AWAY
+    </div>
+
+    <div class="comparison-header">
+      METRIC
+    </div>
+
+    <div class="comparison-header" id="homeHeader">
+      HOME
+    </div>
+
 
     <div class="comparison-cell metric-value" id="awayOffPPA">—</div>
     <div class="comparison-cell metric-name">OFFENSIVE PPA</div>
     <div class="comparison-cell metric-value" id="homeOffPPA">—</div>
 
+
     <div class="comparison-cell metric-value" id="awayDefPPA">—</div>
     <div class="comparison-cell metric-name">DEFENSIVE PPA</div>
     <div class="comparison-cell metric-value" id="homeDefPPA">—</div>
+
 
     <div class="comparison-cell metric-value" id="awaySuccess">—</div>
     <div class="comparison-cell metric-name">SUCCESS RATE</div>
     <div class="comparison-cell metric-value" id="homeSuccess">—</div>
 
+
     <div class="comparison-cell metric-value" id="awayExplosive">—</div>
     <div class="comparison-cell metric-name">EXPLOSIVENESS</div>
     <div class="comparison-cell metric-value" id="homeExplosive">—</div>
+
 
     <div class="comparison-cell metric-value" id="awayPPO">—</div>
     <div class="comparison-cell metric-name">POINTS PER OPPORTUNITY</div>
     <div class="comparison-cell metric-value" id="homePPO">—</div>
 
+
     <div class="comparison-cell metric-value" id="awayDefSuccess">—</div>
     <div class="comparison-cell metric-name">DEF SUCCESS RATE</div>
     <div class="comparison-cell metric-value" id="homeDefSuccess">—</div>
+
 
     <div class="comparison-cell metric-value" id="awayDefExplosive">—</div>
     <div class="comparison-cell metric-name">DEF EXPLOSIVENESS</div>
@@ -313,40 +411,120 @@
 
   </div>
 
+  <!-- SCORING PREDICTION ENGINE -->
+
   <div class="prediction-engine">
 
     <h2>SCORING PREDICTION ENGINE</h2>
 
-    <div class="score-grid">
+    <div class="engine-subtitle">
+      Separate team projections first. Combined total second.
+    </div>
 
-      <div class="score-card">
-        <div class="score-label" id="awayScoreLabel">
-          AWAY PROJECTED SCORE
-        </div>
-        <div class="score" id="awayScore">—</div>
+    <div class="prediction-table">
+
+      <!-- HEADERS -->
+
+      <div class="prediction-header">
+        PERIOD
       </div>
 
-      <div class="score-card">
-        <div class="score-label" id="homeScoreLabel">
-          HOME PROJECTED SCORE
-        </div>
-        <div class="score" id="homeScore">—</div>
+      <div class="prediction-header" id="awayPredictionHeader">
+        AWAY SCORE
+      </div>
+
+      <div class="prediction-header" id="homePredictionHeader">
+        HOME SCORE
+      </div>
+
+      <div class="prediction-header">
+        COMBINED TOTAL
+      </div>
+
+      <div class="prediction-header">
+        MARGIN
+      </div>
+
+
+      <!-- 1Q -->
+
+      <div class="prediction-cell period">
+        1Q
+      </div>
+
+      <div class="prediction-cell">
+        <span class="team-label-small" id="away1QLabel">AWAY</span>
+        <span class="projected-number" id="away1Q">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="team-label-small" id="home1QLabel">HOME</span>
+        <span class="projected-number" id="home1Q">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="projected-number" id="total1Q">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="projected-number" id="margin1Q">—</span>
+      </div>
+
+
+      <!-- 1H -->
+
+      <div class="prediction-cell period">
+        1H
+      </div>
+
+      <div class="prediction-cell">
+        <span class="team-label-small" id="away1HLabel">AWAY</span>
+        <span class="projected-number" id="away1H">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="team-label-small" id="home1HLabel">HOME</span>
+        <span class="projected-number" id="home1H">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="projected-number" id="total1H">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="projected-number" id="margin1H">—</span>
+      </div>
+
+
+      <!-- FULL GAME -->
+
+      <div class="prediction-cell period">
+        FULL
+      </div>
+
+      <div class="prediction-cell">
+        <span class="team-label-small" id="awayFullLabel">AWAY</span>
+        <span class="projected-number" id="awayFull">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="team-label-small" id="homeFullLabel">HOME</span>
+        <span class="projected-number" id="homeFull">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="projected-number" id="totalFull">—</span>
+      </div>
+
+      <div class="prediction-cell">
+        <span class="projected-number" id="marginFull">—</span>
       </div>
 
     </div>
 
-    <div class="projection-summary">
-
-      <div class="summary-box">
-        <div class="summary-label">PROJECTED TOTAL</div>
-        <div class="summary-value" id="projectedTotal">—</div>
-      </div>
-
-      <div class="summary-box">
-        <div class="summary-label">PROJECTED MARGIN</div>
-        <div class="summary-value" id="projectedMargin">—</div>
-      </div>
-
+    <div class="pass-rule">
+      GREEN = clear statistical advantage.
+      If neither side earns green, the matchup stays neutral and we PASS.
     </div>
 
     <div class="status" id="status">
@@ -361,52 +539,63 @@
 
 let cfbData = [];
 
-/*
-  These aliases handle cases where the name displayed
-  in our dropdown differs from the name used by CFBD.
-*/
-const teamAliases = {
-  "Appalachian State": "App State"
-};
 
+/* ------------------------------
+   FORMAT FUNCTIONS
+------------------------------ */
 
-/*
-  Convert decimal rates such as 0.47619
-  into percentages such as 47.6%.
-*/
 function formatPercent(value) {
-  if (value === null || value === undefined) return "—";
+
+  if (value === null || value === undefined) {
+    return "—";
+  }
 
   return (value * 100).toFixed(1) + "%";
 }
 
 
-/*
-  Format regular decimal statistics.
-*/
 function formatNumber(value, decimals = 3) {
-  if (value === null || value === undefined) return "—";
+
+  if (value === null || value === undefined) {
+    return "—";
+  }
 
   return Number(value).toFixed(decimals);
 }
 
 
-/*
-  Find the CFBD record belonging to a selected team.
-*/
+/* ------------------------------
+   FIND TEAM
+------------------------------ */
+
 function findTeam(teamName) {
 
-  if (!teamName) return null;
+  if (!teamName) {
+    return null;
+  }
 
-  const cfbdName = teamAliases[teamName] || teamName;
-
-  return cfbData.find(team => team.team === cfbdName) || null;
+  return cfbData.find(team => team.team === teamName) || null;
 }
 
 
-/*
-  Clear one side of the comparison table.
-*/
+/* ------------------------------
+   REMOVE GREEN
+------------------------------ */
+
+function removeGreen() {
+
+  document
+    .querySelectorAll(".green")
+    .forEach(element => {
+      element.classList.remove("green");
+    });
+}
+
+
+/* ------------------------------
+   CLEAR TEAM SIDE
+------------------------------ */
+
 function clearSide(side) {
 
   document.getElementById(side + "OffPPA").textContent = "—";
@@ -419,49 +608,136 @@ function clearSide(side) {
 }
 
 
-/*
-  Display the real advanced statistics for one team.
-*/
+/* ------------------------------
+   DISPLAY REAL CFBD DATA
+------------------------------ */
+
 function displayTeam(side, team) {
 
   if (!team) {
+
     clearSide(side);
     return;
   }
 
+
   document.getElementById(side + "OffPPA").textContent =
     formatNumber(team.offense?.ppa);
+
 
   document.getElementById(side + "DefPPA").textContent =
     formatNumber(team.defense?.ppa);
 
+
   document.getElementById(side + "Success").textContent =
     formatPercent(team.offense?.successRate);
+
 
   document.getElementById(side + "Explosive").textContent =
     formatNumber(team.offense?.explosiveness);
 
+
   document.getElementById(side + "PPO").textContent =
     formatNumber(team.offense?.pointsPerOpportunity, 2);
 
+
   document.getElementById(side + "DefSuccess").textContent =
     formatPercent(team.defense?.successRate);
+
 
   document.getElementById(side + "DefExplosive").textContent =
     formatNumber(team.defense?.explosiveness);
 }
 
 
-/*
-  Update the entire matchup whenever Doc changes a team.
-*/
+/* ------------------------------
+   CLEAR PROJECTIONS
+------------------------------ */
+
+function clearPredictions() {
+
+  const ids = [
+    "away1Q",
+    "home1Q",
+    "total1Q",
+    "margin1Q",
+
+    "away1H",
+    "home1H",
+    "total1H",
+    "margin1H",
+
+    "awayFull",
+    "homeFull",
+    "totalFull",
+    "marginFull"
+  ];
+
+
+  ids.forEach(id => {
+
+    document.getElementById(id).textContent = "—";
+
+  });
+}
+
+
+/* ------------------------------
+   UPDATE TEAM NAMES
+------------------------------ */
+
+function updatePredictionLabels(awayName, homeName) {
+
+  document.getElementById("awayPredictionHeader").textContent =
+    awayName || "AWAY SCORE";
+
+  document.getElementById("homePredictionHeader").textContent =
+    homeName || "HOME SCORE";
+
+
+  document.getElementById("away1QLabel").textContent =
+    awayName || "AWAY";
+
+  document.getElementById("home1QLabel").textContent =
+    homeName || "HOME";
+
+
+  document.getElementById("away1HLabel").textContent =
+    awayName || "AWAY";
+
+  document.getElementById("home1HLabel").textContent =
+    homeName || "HOME";
+
+
+  document.getElementById("awayFullLabel").textContent =
+    awayName || "AWAY";
+
+  document.getElementById("homeFullLabel").textContent =
+    homeName || "HOME";
+}
+
+
+/* ------------------------------
+   UPDATE MATCHUP
+------------------------------ */
+
 function updateMatchup() {
 
-  const awayName = document.getElementById("awayTeam").value;
-  const homeName = document.getElementById("homeTeam").value;
+  removeGreen();
 
-  const awayTeam = findTeam(awayName);
-  const homeTeam = findTeam(homeName);
+  const awayName =
+    document.getElementById("awayTeam").value;
+
+  const homeName =
+    document.getElementById("homeTeam").value;
+
+
+  const awayTeam =
+    findTeam(awayName);
+
+  const homeTeam =
+    findTeam(homeName);
+
 
   document.getElementById("awayHeader").textContent =
     awayName || "AWAY";
@@ -469,25 +745,34 @@ function updateMatchup() {
   document.getElementById("homeHeader").textContent =
     homeName || "HOME";
 
-  document.getElementById("awayScoreLabel").textContent =
-    awayName ? awayName.toUpperCase() + " PROJECTED SCORE" : "AWAY PROJECTED SCORE";
 
-  document.getElementById("homeScoreLabel").textContent =
-    homeName ? homeName.toUpperCase() + " PROJECTED SCORE" : "HOME PROJECTED SCORE";
+  updatePredictionLabels(
+    awayName,
+    homeName
+  );
 
-  displayTeam("away", awayTeam);
-  displayTeam("home", homeTeam);
+
+  displayTeam(
+    "away",
+    awayTeam
+  );
+
+  displayTeam(
+    "home",
+    homeTeam
+  );
 
 
   /*
-    We intentionally leave the scoring engine blank for now.
-    First we verify that the real CFBD statistics are loading
-    correctly before building the prediction formula.
+    Prediction numbers intentionally remain blank.
+
+    We are building the visual board first.
+
+    The scoring formula comes next after this layout
+    is verified.
   */
-  document.getElementById("awayScore").textContent = "—";
-  document.getElementById("homeScore").textContent = "—";
-  document.getElementById("projectedTotal").textContent = "—";
-  document.getElementById("projectedMargin").textContent = "—";
+
+  clearPredictions();
 
 
   if (!awayName || !homeName) {
@@ -501,15 +786,8 @@ function updateMatchup() {
 
   if (!awayTeam || !homeTeam) {
 
-    const missingTeams = [];
-
-    if (!awayTeam) missingTeams.push(awayName);
-    if (!homeTeam) missingTeams.push(homeName);
-
-    document.getElementById("status").innerHTML =
-      '<span class="error">Data match not found for: ' +
-      missingTeams.join(", ") +
-      '</span>';
+    document.getElementById("status").textContent =
+      "Team data could not be matched.";
 
     return;
   }
@@ -521,64 +799,103 @@ function updateMatchup() {
     " vs " +
     homeName +
     ".";
+
 }
 
 
-/*
-  Load the real CFBD JSON file created by our
-  GitHub Actions workflow.
-*/
+/* ------------------------------
+   LOAD 2026 DATA
+------------------------------ */
+
 async function loadCFBData() {
 
-  const status = document.getElementById("status");
+  const status =
+    document.getElementById("status");
+
 
   try {
 
-    const response = await fetch(
-      "data/advanced-2026.json?updated=" + Date.now()
-    );
+    const response =
+      await fetch(
+        "data/advanced-2026.json?updated=" +
+        Date.now()
+      );
+
 
     if (!response.ok) {
+
       throw new Error(
-        "HTTP " + response.status + " while loading advanced-2026.json"
+        "HTTP " +
+        response.status
       );
+
     }
 
-    const data = await response.json();
 
-    if (!Array.isArray(data) || data.length === 0) {
-      throw new Error("The advanced statistics file is empty.");
+    const data =
+      await response.json();
+
+
+    if (
+      !Array.isArray(data) ||
+      data.length === 0
+    ) {
+
+      throw new Error(
+        "Advanced statistics file is empty."
+      );
+
     }
+
 
     cfbData = data;
 
 
-    /*
-      Build our dropdowns from the ACTUAL teams returned
-      by CFBD. This prevents us from maintaining a giant
-      hand-written team list.
-    */
-    const awaySelect = document.getElementById("awayTeam");
-    const homeSelect = document.getElementById("homeTeam");
+    const awaySelect =
+      document.getElementById("awayTeam");
+
+    const homeSelect =
+      document.getElementById("homeTeam");
 
 
-    const displayTeams = cfbData
-      .map(team => team.team)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
+    const teams =
+      cfbData
+        .map(team => team.team)
+        .filter(Boolean)
+        .sort(
+          (a, b) =>
+            a.localeCompare(b)
+        );
 
 
-    displayTeams.forEach(teamName => {
+    teams.forEach(teamName => {
 
-      const awayOption = document.createElement("option");
-      awayOption.value = teamName;
-      awayOption.textContent = teamName;
-      awaySelect.appendChild(awayOption);
+      const awayOption =
+        document.createElement("option");
 
-      const homeOption = document.createElement("option");
-      homeOption.value = teamName;
-      homeOption.textContent = teamName;
-      homeSelect.appendChild(homeOption);
+      awayOption.value =
+        teamName;
+
+      awayOption.textContent =
+        teamName;
+
+      awaySelect.appendChild(
+        awayOption
+      );
+
+
+      const homeOption =
+        document.createElement("option");
+
+      homeOption.value =
+        teamName;
+
+      homeOption.textContent =
+        teamName;
+
+      homeSelect.appendChild(
+        homeOption
+      );
 
     });
 
@@ -593,28 +910,38 @@ async function loadCFBData() {
 
     console.error(error);
 
-    status.innerHTML =
-      '<span class="error">Could not load the 2026 advanced statistics.</span>';
+    status.textContent =
+      "Could not load the 2026 advanced statistics.";
 
   }
+
 }
 
 
-/*
-  Listen for team selections.
-*/
+/* ------------------------------
+   EVENT LISTENERS
+------------------------------ */
+
 document
   .getElementById("awayTeam")
-  .addEventListener("change", updateMatchup);
+  .addEventListener(
+    "change",
+    updateMatchup
+  );
+
 
 document
   .getElementById("homeTeam")
-  .addEventListener("change", updateMatchup);
+  .addEventListener(
+    "change",
+    updateMatchup
+  );
 
 
-/*
-  Start the War Room.
-*/
+/* ------------------------------
+   START WAR ROOM
+------------------------------ */
+
 loadCFBData();
 
 </script>
