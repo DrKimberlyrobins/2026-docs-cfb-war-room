@@ -13,15 +13,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ==========================================
+      # 1. CHECK OUT REPOSITORY
+      # ==========================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
 
       - name: Create data folder
         run: mkdir -p data
 
 
       # ==========================================
-      # 1. ADVANCED TEAM STATS
+      # 2. DOWNLOAD ADVANCED TEAM STATS
       # ==========================================
 
       - name: Download 2026 advanced team stats
@@ -49,7 +54,7 @@ jobs:
 
 
       # ==========================================
-      # 2. 2026 GAME RESULTS + QUARTER SCORES
+      # 3. DOWNLOAD GAME + QUARTER DATA
       # ==========================================
 
       - name: Download 2026 game data
@@ -77,14 +82,12 @@ jobs:
 
 
       # ==========================================
-      # 3. VERIFY QUARTER-SCORE DATA EXISTS
+      # 4. VERIFY COMPLETED GAMES
       # ==========================================
 
       - name: Verify completed games have line scores
         run: |
-          echo "Completed games with quarter scoring data:"
-
-          jq '
+          COUNT=$(jq '
             [
               .[]
               | select(
@@ -96,11 +99,351 @@ jobs:
                 )
             ]
             | length
-          ' data/games-2026.json
+          ' data/games-2026.json)
+
+          echo "Completed games with quarter scoring data:"
+          echo "$COUNT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "ERROR: No completed games with quarter scores."
+            exit 1
+          fi
 
 
       # ==========================================
-      # 4. COMMIT UPDATED FILES
+      # 5. BUILD TEAM SCORING PROFILES
+      #
+      # IMPORTANT:
+      # These are OBSERVED averages.
+      # They are NOT predictions.
+      # ==========================================
+
+      - name: Build 2026 scoring profiles
+        run: |
+          jq '
+            def completed_games:
+              [
+                .[]
+                | select(
+                    .completed == true
+                    and .homeLineScores != null
+                    and .awayLineScores != null
+                    and (.homeLineScores | length) >= 4
+                    and (.awayLineScores | length) >= 4
+                  )
+              ];
+
+            def game_rows:
+              completed_games
+              | map(
+
+                  # HOME TEAM ROW
+                  {
+                    team: .homeTeam,
+                    location: "home",
+
+                    q1Scored:
+                      (.homeLineScores[0] // 0),
+
+                    q1Allowed:
+                      (.awayLineScores[0] // 0),
+
+                    firstHalfScored:
+                      (
+                        (.homeLineScores[0] // 0)
+                        +
+                        (.homeLineScores[1] // 0)
+                      ),
+
+                    firstHalfAllowed:
+                      (
+                        (.awayLineScores[0] // 0)
+                        +
+                        (.awayLineScores[1] // 0)
+                      ),
+
+                    fullScored:
+                      (.homePoints // 0),
+
+                    fullAllowed:
+                      (.awayPoints // 0)
+                  },
+
+                  # AWAY TEAM ROW
+                  {
+                    team: .awayTeam,
+                    location: "away",
+
+                    q1Scored:
+                      (.awayLineScores[0] // 0),
+
+                    q1Allowed:
+                      (.homeLineScores[0] // 0),
+
+                    firstHalfScored:
+                      (
+                        (.awayLineScores[0] // 0)
+                        +
+                        (.awayLineScores[1] // 0)
+                      ),
+
+                    firstHalfAllowed:
+                      (
+                        (.homeLineScores[0] // 0)
+                        +
+                        (.homeLineScores[1] // 0)
+                      ),
+
+                    fullScored:
+                      (.awayPoints // 0),
+
+                    fullAllowed:
+                      (.homePoints // 0)
+                  }
+
+                )
+
+              | flatten;
+
+
+            game_rows
+
+            | sort_by(.team)
+
+            | group_by(.team)
+
+            | map(
+
+                . as $games
+
+                | {
+
+                    team: $games[0].team,
+
+                    games:
+                      ($games | length),
+
+
+                    # --------------------------
+                    # OVERALL 1Q
+                    # --------------------------
+
+                    avg1QScored:
+                      (
+                        $games
+                        | map(.q1Scored)
+                        | add / length
+                      ),
+
+                    avg1QAllowed:
+                      (
+                        $games
+                        | map(.q1Allowed)
+                        | add / length
+                      ),
+
+
+                    # --------------------------
+                    # OVERALL FIRST HALF
+                    # --------------------------
+
+                    avg1HScored:
+                      (
+                        $games
+                        | map(.firstHalfScored)
+                        | add / length
+                      ),
+
+                    avg1HAllowed:
+                      (
+                        $games
+                        | map(.firstHalfAllowed)
+                        | add / length
+                      ),
+
+
+                    # --------------------------
+                    # OVERALL FULL GAME
+                    # --------------------------
+
+                    avgFullScored:
+                      (
+                        $games
+                        | map(.fullScored)
+                        | add / length
+                      ),
+
+                    avgFullAllowed:
+                      (
+                        $games
+                        | map(.fullAllowed)
+                        | add / length
+                      ),
+
+
+                    # --------------------------
+                    # HOME SAMPLE
+                    # --------------------------
+
+                    homeGames:
+                      (
+                        $games
+                        | map(select(.location == "home"))
+                        | length
+                      ),
+
+
+                    # --------------------------
+                    # AWAY SAMPLE
+                    # --------------------------
+
+                    awayGames:
+                      (
+                        $games
+                        | map(select(.location == "away"))
+                        | length
+                      ),
+
+
+                    # --------------------------
+                    # HOME SPLITS
+                    # --------------------------
+
+                    home:
+                      (
+                        $games
+                        | map(select(.location == "home"))
+
+                        | if length == 0 then
+                            null
+                          else
+                            {
+                              games: length,
+
+                              avg1QScored:
+                                (
+                                  map(.q1Scored)
+                                  | add / length
+                                ),
+
+                              avg1QAllowed:
+                                (
+                                  map(.q1Allowed)
+                                  | add / length
+                                ),
+
+                              avg1HScored:
+                                (
+                                  map(.firstHalfScored)
+                                  | add / length
+                                ),
+
+                              avg1HAllowed:
+                                (
+                                  map(.firstHalfAllowed)
+                                  | add / length
+                                ),
+
+                              avgFullScored:
+                                (
+                                  map(.fullScored)
+                                  | add / length
+                                ),
+
+                              avgFullAllowed:
+                                (
+                                  map(.fullAllowed)
+                                  | add / length
+                                )
+                            }
+                          end
+                      ),
+
+
+                    # --------------------------
+                    # AWAY SPLITS
+                    # --------------------------
+
+                    away:
+                      (
+                        $games
+                        | map(select(.location == "away"))
+
+                        | if length == 0 then
+                            null
+                          else
+                            {
+                              games: length,
+
+                              avg1QScored:
+                                (
+                                  map(.q1Scored)
+                                  | add / length
+                                ),
+
+                              avg1QAllowed:
+                                (
+                                  map(.q1Allowed)
+                                  | add / length
+                                ),
+
+                              avg1HScored:
+                                (
+                                  map(.firstHalfScored)
+                                  | add / length
+                                ),
+
+                              avg1HAllowed:
+                                (
+                                  map(.firstHalfAllowed)
+                                  | add / length
+                                ),
+
+                              avgFullScored:
+                                (
+                                  map(.fullScored)
+                                  | add / length
+                                ),
+
+                              avgFullAllowed:
+                                (
+                                  map(.fullAllowed)
+                                  | add / length
+                                )
+                            }
+                          end
+                      )
+
+                  }
+
+              )
+          ' data/games-2026.json \
+          > data/scoring-2026.json
+
+
+      # ==========================================
+      # 6. VERIFY SCORING PROFILE
+      # ==========================================
+
+      - name: Verify scoring profiles
+        run: |
+          echo "Scoring profile file size:"
+          wc -c data/scoring-2026.json
+
+          echo "Teams with scoring profiles:"
+          jq 'length' data/scoring-2026.json
+
+          echo "Sample team profile:"
+          jq '.[0]' data/scoring-2026.json
+
+          if [ "$(jq 'length' data/scoring-2026.json)" -eq 0 ]; then
+            echo "ERROR: Scoring profile file is empty."
+            exit 1
+          fi
+
+
+      # ==========================================
+      # 7. COMMIT ALL DATA FILES
       # ==========================================
 
       - name: Commit updated data
@@ -110,10 +453,11 @@ jobs:
 
           git add data/advanced-2026.json
           git add data/games-2026.json
+          git add data/scoring-2026.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Update 2026 CFB advanced stats and game data"
+            git commit -m "Update 2026 CFB data and scoring profiles"
             git push
           fi
