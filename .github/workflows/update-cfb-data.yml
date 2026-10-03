@@ -65,7 +65,37 @@ jobs:
             -H "Authorization: Bearer $CFBD_API_KEY" \
             "https://api.collegefootballdata.com/games?year=2026&seasonType=regular" \
             -o data/games-2026.json
+      # ==========================================
+      # STRENGTH OF SCHEDULE
+      # ==========================================
 
+      - name: Download 2026 FPI and SOS data
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CFBD_API_KEY" \
+            "https://api.collegefootballdata.com/ratings/fpi?year=2026" \
+            -o data/sos-2026.json
+
+      - name: Verify SOS data
+        run: |
+          echo "SOS records returned:"
+          jq 'length' data/sos-2026.json
+
+          echo "Teams with Strength of Schedule:"
+          jq '
+            [
+              .[]
+              | select(.resumeRanks.strengthOfSchedule != null)
+            ]
+            | length
+          ' data/sos-2026.json
+
+          if [ "$(jq 'length' data/sos-2026.json)" -eq 0 ]; then
+            echo "ERROR: CFBD returned no SOS data."
+            exit 1
+          fi
 
       - name: Verify game data
         run: |
@@ -454,6 +484,7 @@ jobs:
           git add data/advanced-2026.json
           git add data/games-2026.json
           git add data/scoring-2026.json
+          git add data/sos-2026.json
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
