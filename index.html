@@ -577,31 +577,22 @@ function formatProjection(value) {
 
 function findTeam(teamName) {
   if (!teamName) return null;
-
-  return cfbData.find(
-    team => team.team === teamName
-  ) || null;
+  return cfbData.find(team => team.team === teamName) || null;
 }
 
 function findSOS(teamName) {
   if (!teamName) return null;
-
-  return sosData.find(
-    team => team.team === teamName
-  ) || null;
+  return sosData.find(team => team.team === teamName) || null;
 }
 
 function findScoring(teamName) {
   if (!teamName) return null;
-
-  return scoringData.find(
-    team => team.team === teamName
-  ) || null;
+  return scoringData.find(team => team.team === teamName) || null;
 }
 
 
 /* =========================================================
-   GREEN SIGNAL CONTROL
+   GREEN CONTROL
 ========================================================= */
 
 function removeGreen() {
@@ -618,6 +609,7 @@ function removeGreen() {
 ========================================================= */
 
 function clearSide(side) {
+
   document.getElementById(side + "OffPPA").textContent = "—";
   document.getElementById(side + "DefPPA").textContent = "—";
   document.getElementById(side + "Success").textContent = "—";
@@ -627,6 +619,7 @@ function clearSide(side) {
   document.getElementById(side + "DefExplosive").textContent = "—";
   document.getElementById(side + "SOS").textContent = "—";
 }
+
 
 function displayTeam(side, team, sosTeam) {
 
@@ -656,25 +649,15 @@ function displayTeam(side, team, sosTeam) {
   document.getElementById(side + "DefExplosive").textContent =
     formatNumber(team.defense?.explosiveness);
 
-  const sosRank =
-    sosTeam?.resumeRanks?.strengthOfSchedule;
-
   document.getElementById(side + "SOS").textContent =
-    formatSOS(sosRank);
+    formatSOS(
+      sosTeam?.resumeRanks?.strengthOfSchedule
+    );
 }
 
 
 /* =========================================================
    SAMPLE-SIZE PROTECTION
-
-   Location performance is useful, but a one-game home/away
-   sample should not replace the overall team profile.
-
-   We therefore shrink the location average toward the
-   team's overall average.
-
-   4 location games = 50% location / 50% overall.
-   Fewer games = even more weight on overall performance.
 ========================================================= */
 
 function blendedAverage(
@@ -712,7 +695,7 @@ function blendedAverage(
 
 
 /* =========================================================
-   PERIOD DEFINITIONS
+   SCORING PERIODS
 ========================================================= */
 
 const periodFields = {
@@ -734,10 +717,6 @@ const periodFields = {
 
 };
 
-
-/* =========================================================
-   LOCATION-ADJUSTED TEAM TENDENCY
-========================================================= */
 
 function getScoringTendency(
   profile,
@@ -768,19 +747,10 @@ function getScoringTendency(
 
 
 /* =========================================================
-   BASELINE MATCHUP PROJECTION
-
-   Each team's score begins with the interaction between:
-
-   1. That team's observed scoring tendency.
-   2. The opponent's observed points-allowed tendency.
-
-   Both sides use sample-size-protected location data.
-
-   No advanced-stat weights are invented here.
+   BASELINE SCORE
 ========================================================= */
 
-function projectTeamScore(
+function projectBaseline(
   offenseProfile,
   defenseProfile,
   offenseLocation,
@@ -818,13 +788,6 @@ function projectTeamScore(
   }
 
 
-  /*
-     Neutral interaction baseline.
-
-     We are intentionally NOT applying arbitrary
-     PPA/PPO/SOS multipliers here.
-  */
-
   return (
     offenseScoring +
     defenseAllowed
@@ -833,12 +796,348 @@ function projectTeamScore(
 
 
 /* =========================================================
-   CLEAR PROJECTIONS
+   NORMALIZATION
+
+   Instead of comparing unlike raw units directly,
+   determine where each team's metric sits relative
+   to the current 2026 FBS data distribution.
+========================================================= */
+
+function getMetricValues(getter) {
+
+  return cfbData
+    .map(getter)
+    .map(Number)
+    .filter(Number.isFinite);
+}
+
+
+function mean(values) {
+
+  if (!values.length) return 0;
+
+  return (
+    values.reduce((sum, value) => sum + value, 0) /
+    values.length
+  );
+}
+
+
+function standardDeviation(values) {
+
+  if (values.length < 2) return 1;
+
+  const avg =
+    mean(values);
+
+  const variance =
+    values.reduce(
+      (sum, value) =>
+        sum + Math.pow(value - avg, 2),
+      0
+    ) / values.length;
+
+  const sd =
+    Math.sqrt(variance);
+
+  return sd || 1;
+}
+
+
+function zScore(value, values) {
+
+  const numeric =
+    Number(value);
+
+  if (
+    !Number.isFinite(numeric) ||
+    !values.length
+  ) {
+    return 0;
+  }
+
+  return (
+    numeric - mean(values)
+  ) / standardDeviation(values);
+}
+
+
+/* =========================================================
+   ADVANCED MATCHUP PROFILE
+
+   Positive = favorable to the offense.
+   Negative = favorable to the opposing defense.
+
+   These are standardized comparisons, NOT arbitrary
+   raw-number additions.
+========================================================= */
+
+function advancedMatchupScore(
+  offenseTeam,
+  defenseTeam,
+  offenseSOS,
+  defenseSOS
+) {
+
+  if (!offenseTeam || !defenseTeam) {
+    return 0;
+  }
+
+
+  const offPPAValues =
+    getMetricValues(
+      team => team.offense?.ppa
+    );
+
+  const defPPAValues =
+    getMetricValues(
+      team => team.defense?.ppa
+    );
+
+  const offSuccessValues =
+    getMetricValues(
+      team => team.offense?.successRate
+    );
+
+  const defSuccessValues =
+    getMetricValues(
+      team => team.defense?.successRate
+    );
+
+  const offExplosiveValues =
+    getMetricValues(
+      team => team.offense?.explosiveness
+    );
+
+  const defExplosiveValues =
+    getMetricValues(
+      team => team.defense?.explosiveness
+    );
+
+  const ppoValues =
+    getMetricValues(
+      team => team.offense?.pointsPerOpportunity
+    );
+
+
+  /*
+     Offense:
+     higher is favorable.
+  */
+
+  const offPPA =
+    zScore(
+      offenseTeam.offense?.ppa,
+      offPPAValues
+    );
+
+  const offSuccess =
+    zScore(
+      offenseTeam.offense?.successRate,
+      offSuccessValues
+    );
+
+  const offExplosive =
+    zScore(
+      offenseTeam.offense?.explosiveness,
+      offExplosiveValues
+    );
+
+  const offPPO =
+    zScore(
+      offenseTeam.offense?.pointsPerOpportunity,
+      ppoValues
+    );
+
+
+  /*
+     Defense:
+     lower allowed values are favorable to defense,
+     so reverse the sign when measuring how favorable
+     the matchup is for the offense.
+  */
+
+  const opponentDefPPA =
+    -zScore(
+      defenseTeam.defense?.ppa,
+      defPPAValues
+    );
+
+  const opponentDefSuccess =
+    -zScore(
+      defenseTeam.defense?.successRate,
+      defSuccessValues
+    );
+
+  const opponentDefExplosive =
+    -zScore(
+      defenseTeam.defense?.explosiveness,
+      defExplosiveValues
+    );
+
+
+  /*
+     SOS:
+     lower rank = stronger schedule.
+
+     Convert rank difference to a bounded context
+     adjustment rather than treating rank like points.
+  */
+
+  const offenseSOSRank =
+    Number(
+      offenseSOS?.resumeRanks?.strengthOfSchedule
+    );
+
+  const defenseSOSRank =
+    Number(
+      defenseSOS?.resumeRanks?.strengthOfSchedule
+    );
+
+
+  let sosContext = 0;
+
+  if (
+    Number.isFinite(offenseSOSRank) &&
+    Number.isFinite(defenseSOSRank)
+  ) {
+
+    sosContext =
+      (defenseSOSRank - offenseSOSRank) / 130;
+
+    sosContext =
+      Math.max(
+        -1,
+        Math.min(1, sosContext)
+      );
+  }
+
+
+  /*
+     Equal contribution here means:
+     "show us what the whole advanced profile says."
+
+     This is an experimental adjustment layer,
+     NOT a trained claim that each metric has equal
+     predictive importance.
+  */
+
+  const components = [
+    offPPA,
+    offSuccess,
+    offExplosive,
+    offPPO,
+    opponentDefPPA,
+    opponentDefSuccess,
+    opponentDefExplosive,
+    sosContext
+  ];
+
+
+  return mean(components);
+}
+
+
+/* =========================================================
+   PERIOD-SPECIFIC ADVANCED ADJUSTMENT
+
+   Keep the experimental advanced layer bounded so
+   it cannot overwhelm observed scoring history.
+========================================================= */
+
+function advancedAdjustment(
+  matchupScore,
+  period
+) {
+
+  let maxAdjustment;
+
+  if (period === "q1") {
+    maxAdjustment = 2.5;
+  }
+
+  else if (period === "h1") {
+    maxAdjustment = 5.0;
+  }
+
+  else {
+    maxAdjustment = 8.0;
+  }
+
+
+  /*
+     tanh prevents extreme metrics from creating
+     ridiculous score changes.
+  */
+
+  return (
+    Math.tanh(matchupScore) *
+    maxAdjustment
+  );
+}
+
+
+/* =========================================================
+   FINAL EXPERIMENTAL PROJECTION
+========================================================= */
+
+function projectTeamScore(
+  offenseProfile,
+  defenseProfile,
+  offenseLocation,
+  defenseLocation,
+  offenseTeam,
+  defenseTeam,
+  offenseSOS,
+  defenseSOS,
+  period
+) {
+
+  const baseline =
+    projectBaseline(
+      offenseProfile,
+      defenseProfile,
+      offenseLocation,
+      defenseLocation,
+      period
+    );
+
+
+  if (!Number.isFinite(baseline)) {
+    return null;
+  }
+
+
+  const matchup =
+    advancedMatchupScore(
+      offenseTeam,
+      defenseTeam,
+      offenseSOS,
+      defenseSOS
+    );
+
+
+  const adjustment =
+    advancedAdjustment(
+      matchup,
+      period
+    );
+
+
+  return Math.max(
+    0,
+    baseline + adjustment
+  );
+}
+
+
+/* =========================================================
+   PROJECTION DISPLAY
 ========================================================= */
 
 function clearPredictions() {
 
-  const ids = [
+  [
     "away1Q",
     "home1Q",
     "total1Q",
@@ -853,20 +1152,17 @@ function clearPredictions() {
     "homeFull",
     "totalFull",
     "marginFull"
-  ];
+  ].forEach(id => {
 
-  ids.forEach(id => {
-    document.getElementById(id).textContent = "—";
+    document.getElementById(id).textContent =
+      "—";
+
   });
 }
 
 
-/* =========================================================
-   DISPLAY ONE PERIOD
-========================================================= */
-
 function displayPeriodProjection(
-  periodKey,
+  period,
   awayScore,
   homeScore
 ) {
@@ -878,11 +1174,14 @@ function displayPeriodProjection(
     return;
   }
 
+
   const total =
     awayScore + homeScore;
 
   const margin =
-    Math.abs(homeScore - awayScore);
+    Math.abs(
+      awayScore - homeScore
+    );
 
 
   let awayId;
@@ -891,7 +1190,7 @@ function displayPeriodProjection(
   let marginId;
 
 
-  if (periodKey === "q1") {
+  if (period === "q1") {
 
     awayId = "away1Q";
     homeId = "home1Q";
@@ -900,7 +1199,7 @@ function displayPeriodProjection(
 
   }
 
-  else if (periodKey === "h1") {
+  else if (period === "h1") {
 
     awayId = "away1H";
     homeId = "home1H";
@@ -934,110 +1233,87 @@ function displayPeriodProjection(
 
 
 /* =========================================================
-   RUN BASELINE SCORING ENGINE
+   RUN ENGINE
 ========================================================= */
 
 function runScoringEngine(
+  awayTeam,
+  homeTeam,
+  awaySOS,
+  homeSOS,
   awayScoring,
   homeScoring
 ) {
 
   clearPredictions();
 
-  if (!awayScoring || !homeScoring) {
-    return false;
-  }
 
-
-  const away1Q =
-    projectTeamScore(
-      awayScoring,
-      homeScoring,
-      "away",
-      "home",
-      "q1"
-    );
-
-  const home1Q =
-    projectTeamScore(
-      homeScoring,
-      awayScoring,
-      "home",
-      "away",
-      "q1"
-    );
-
-
-  const away1H =
-    projectTeamScore(
-      awayScoring,
-      homeScoring,
-      "away",
-      "home",
-      "h1"
-    );
-
-  const home1H =
-    projectTeamScore(
-      homeScoring,
-      awayScoring,
-      "home",
-      "away",
-      "h1"
-    );
-
-
-  const awayFull =
-    projectTeamScore(
-      awayScoring,
-      homeScoring,
-      "away",
-      "home",
-      "full"
-    );
-
-  const homeFull =
-    projectTeamScore(
-      homeScoring,
-      awayScoring,
-      "home",
-      "away",
-      "full"
-    );
-
-
-  displayPeriodProjection(
+  const periods = [
     "q1",
-    away1Q,
-    home1Q
-  );
-
-  displayPeriodProjection(
     "h1",
-    away1H,
-    home1H
-  );
-
-  displayPeriodProjection(
-    "full",
-    awayFull,
-    homeFull
-  );
+    "full"
+  ];
 
 
-  return (
-    Number.isFinite(away1Q) &&
-    Number.isFinite(home1Q) &&
-    Number.isFinite(away1H) &&
-    Number.isFinite(home1H) &&
-    Number.isFinite(awayFull) &&
-    Number.isFinite(homeFull)
-  );
+  let complete = true;
+
+
+  periods.forEach(period => {
+
+
+    const awayScore =
+      projectTeamScore(
+        awayScoring,
+        homeScoring,
+        "away",
+        "home",
+        awayTeam,
+        homeTeam,
+        awaySOS,
+        homeSOS,
+        period
+      );
+
+
+    const homeScore =
+      projectTeamScore(
+        homeScoring,
+        awayScoring,
+        "home",
+        "away",
+        homeTeam,
+        awayTeam,
+        homeSOS,
+        awaySOS,
+        period
+      );
+
+
+    if (
+      !Number.isFinite(awayScore) ||
+      !Number.isFinite(homeScore)
+    ) {
+
+      complete = false;
+      return;
+    }
+
+
+    displayPeriodProjection(
+      period,
+      awayScore,
+      homeScore
+    );
+
+  });
+
+
+  return complete;
 }
 
 
 /* =========================================================
-   UPDATE TEAM NAMES
+   LABELS
 ========================================================= */
 
 function updatePredictionLabels(
@@ -1051,20 +1327,17 @@ function updatePredictionLabels(
   document.getElementById("homePredictionHeader").textContent =
     homeName || "HOME SCORE";
 
-
   document.getElementById("away1QLabel").textContent =
     awayName || "AWAY";
 
   document.getElementById("home1QLabel").textContent =
     homeName || "HOME";
 
-
   document.getElementById("away1HLabel").textContent =
     awayName || "AWAY";
 
   document.getElementById("home1HLabel").textContent =
     homeName || "HOME";
-
 
   document.getElementById("awayFullLabel").textContent =
     awayName || "AWAY";
@@ -1097,13 +1370,11 @@ function updateMatchup() {
   const homeTeam =
     findTeam(homeName);
 
-
   const awaySOS =
     findSOS(awayName);
 
   const homeSOS =
     findSOS(homeName);
-
 
   const awayScoring =
     findScoring(awayName);
@@ -1147,51 +1418,47 @@ function updateMatchup() {
   }
 
 
-  if (!awayTeam || !homeTeam) {
+  if (
+    !awayTeam ||
+    !homeTeam ||
+    !awayScoring ||
+    !homeScoring
+  ) {
 
     document.getElementById("status").textContent =
-      "Advanced team data could not be matched.";
+      "Complete matchup data is not available for both teams.";
 
     return;
   }
 
 
-  if (!awayScoring || !homeScoring) {
-
-    document.getElementById("status").textContent =
-      "Scoring history is not available for both teams.";
-
-    return;
-  }
-
-
-  const projectionComplete =
+  const complete =
     runScoringEngine(
+      awayTeam,
+      homeTeam,
+      awaySOS,
+      homeSOS,
       awayScoring,
       homeScoring
     );
 
 
-  if (!projectionComplete) {
+  if (!complete) {
 
     document.getElementById("status").textContent =
-      "The scoring profiles loaded, but a complete projection could not be calculated.";
+      "The matchup loaded, but a complete projection could not be calculated.";
 
     return;
   }
 
 
   document.getElementById("status").textContent =
-    "Baseline 2026 scoring projection loaded for " +
-    awayName +
-    " vs " +
-    homeName +
-    ". Advanced metrics are displayed but are not yet used as unvalidated scoring weights.";
+    "EXPERIMENTAL whole-picture projection: scoring history + opponent defense + location/sample protection + PPA + success rate + explosiveness + PPO + SOS.";
 }
 
 
 /* =========================================================
-   LOAD 2026 DATA
+   LOAD DATA
 ========================================================= */
 
 async function loadCFBData() {
@@ -1237,14 +1504,12 @@ async function loadCFBData() {
       );
     }
 
-
     if (!sosResponse.ok) {
       throw new Error(
         "SOS HTTP " +
         sosResponse.status
       );
     }
-
 
     if (!scoringResponse.ok) {
       throw new Error(
@@ -1374,7 +1639,7 @@ async function loadCFBData() {
 
 
 /* =========================================================
-   EVENT LISTENERS
+   EVENTS
 ========================================================= */
 
 document
@@ -1394,7 +1659,7 @@ document
 
 
 /* =========================================================
-   START WAR ROOM
+   START
 ========================================================= */
 
 loadCFBData();
