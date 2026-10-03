@@ -4187,23 +4187,23 @@
   },
   {
     "team": "Delaware",
-    "games": 4,
-    "avg1QScored": 1.75,
-    "avg1QAllowed": 7,
-    "avg1HScored": 14,
-    "avg1HAllowed": 14,
-    "avgFullScored": 23.25,
-    "avgFullAllowed": 24.5,
-    "homeGames": 2,
+    "games": 5,
+    "avg1QScored": 1.4,
+    "avg1QAllowed": 6.8,
+    "avg1HScored": 11.2,
+    "avg1HAllowed": 15.2,
+    "avgFullScored": 21.4,
+    "avgFullAllowed": 25.6,
+    "homeGames": 3,
     "awayGames": 2,
     "home": {
-      "games": 2,
-      "avg1QScored": 3.5,
-      "avg1QAllowed": 3.5,
-      "avg1HScored": 18,
-      "avg1HAllowed": 7,
-      "avgFullScored": 32,
-      "avgFullAllowed": 10.5
+      "games": 3,
+      "avg1QScored": 2.3333333333333335,
+      "avg1QAllowed": 4.333333333333333,
+      "avg1HScored": 12,
+      "avg1HAllowed": 11.333333333333334,
+      "avgFullScored": 26,
+      "avgFullAllowed": 17
     },
     "away": {
       "games": 2,
@@ -8655,15 +8655,15 @@
   },
   {
     "team": "Liberty",
-    "games": 4,
-    "avg1QScored": 9.25,
-    "avg1QAllowed": 5.75,
-    "avg1HScored": 14,
-    "avg1HAllowed": 15.25,
-    "avgFullScored": 30.5,
-    "avgFullAllowed": 18.75,
+    "games": 5,
+    "avg1QScored": 8.6,
+    "avg1QAllowed": 4.6,
+    "avg1HScored": 15.2,
+    "avg1HAllowed": 12.2,
+    "avgFullScored": 30.4,
+    "avgFullAllowed": 17.8,
     "homeGames": 2,
-    "awayGames": 2,
+    "awayGames": 3,
     "home": {
       "games": 2,
       "avg1QScored": 13.5,
@@ -8674,13 +8674,13 @@
       "avgFullAllowed": 19
     },
     "away": {
-      "games": 2,
-      "avg1QScored": 5,
-      "avg1QAllowed": 5,
-      "avg1HScored": 8,
-      "avg1HAllowed": 17,
-      "avgFullScored": 23.5,
-      "avgFullAllowed": 18.5
+      "games": 3,
+      "avg1QScored": 5.333333333333333,
+      "avg1QAllowed": 3.3333333333333335,
+      "avg1HScored": 12,
+      "avg1HAllowed": 11.333333333333334,
+      "avgFullScored": 25.666666666666668,
+      "avgFullAllowed": 17
     }
   },
   {
@@ -12979,15 +12979,15 @@
   },
   {
     "team": "Pittsburgh",
-    "games": 4,
-    "avg1QScored": 11.25,
-    "avg1QAllowed": 0,
-    "avg1HScored": 23.75,
-    "avg1HAllowed": 6,
-    "avgFullScored": 39.25,
-    "avgFullAllowed": 8.5,
+    "games": 5,
+    "avg1QScored": 10.4,
+    "avg1QAllowed": 2.8,
+    "avg1HScored": 23.2,
+    "avg1HAllowed": 9.6,
+    "avgFullScored": 38.4,
+    "avgFullAllowed": 13.4,
     "homeGames": 4,
-    "awayGames": 0,
+    "awayGames": 1,
     "home": {
       "games": 4,
       "avg1QScored": 11.25,
@@ -12997,7 +12997,15 @@
       "avgFullScored": 39.25,
       "avgFullAllowed": 8.5
     },
-    "away": null
+    "away": {
+      "games": 1,
+      "avg1QScored": 7,
+      "avg1QAllowed": 14,
+      "avg1HScored": 21,
+      "avg1HAllowed": 24,
+      "avgFullScored": 35,
+      "avgFullAllowed": 33
+    }
   },
   {
     "team": "Plymouth State",
@@ -17703,23 +17711,23 @@
   },
   {
     "team": "Virginia Tech",
-    "games": 4,
-    "avg1QScored": 11.25,
-    "avg1QAllowed": 0.75,
-    "avg1HScored": 27.25,
-    "avg1HAllowed": 5,
-    "avgFullScored": 43.25,
-    "avgFullAllowed": 16,
-    "homeGames": 2,
+    "games": 5,
+    "avg1QScored": 11.8,
+    "avg1QAllowed": 2,
+    "avg1HScored": 26.6,
+    "avg1HAllowed": 8.2,
+    "avgFullScored": 41.2,
+    "avgFullAllowed": 19.8,
+    "homeGames": 3,
     "awayGames": 2,
     "home": {
-      "games": 2,
-      "avg1QScored": 19,
-      "avg1QAllowed": 1.5,
-      "avg1HScored": 39.5,
-      "avg1HAllowed": 3,
-      "avgFullScored": 58.5,
-      "avgFullAllowed": 12
+      "games": 3,
+      "avg1QScored": 17.333333333333332,
+      "avg1QAllowed": 3.3333333333333335,
+      "avg1HScored": 34.333333333333336,
+      "avg1HAllowed": 9,
+      "avgFullScored": 50,
+      "avgFullAllowed": 19.666666666666668
     },
     "away": {
       "games": 2,
