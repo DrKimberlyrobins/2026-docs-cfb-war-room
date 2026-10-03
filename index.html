@@ -542,6 +542,7 @@ select {
 <script>
 
 let cfbData = [];
+let sosData = [];
 
 
 /* ------------------------------
@@ -568,8 +569,18 @@ function formatNumber(value, decimals = 3) {
 }
 
 
+function formatSOS(value) {
+
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  return "#" + value;
+}
+
+
 /* ------------------------------
-   FIND TEAM
+   FIND TEAM DATA
 ------------------------------ */
 
 function findTeam(teamName) {
@@ -579,6 +590,16 @@ function findTeam(teamName) {
   }
 
   return cfbData.find(team => team.team === teamName) || null;
+}
+
+
+function findSOS(teamName) {
+
+  if (!teamName) {
+    return null;
+  }
+
+  return sosData.find(team => team.team === teamName) || null;
 }
 
 
@@ -609,6 +630,7 @@ function clearSide(side) {
   document.getElementById(side + "PPO").textContent = "—";
   document.getElementById(side + "DefSuccess").textContent = "—";
   document.getElementById(side + "DefExplosive").textContent = "—";
+  document.getElementById(side + "SOS").textContent = "—";
 }
 
 
@@ -616,10 +638,9 @@ function clearSide(side) {
    DISPLAY REAL CFBD DATA
 ------------------------------ */
 
-function displayTeam(side, team) {
+function displayTeam(side, team, sosTeam) {
 
   if (!team) {
-
     clearSide(side);
     return;
   }
@@ -651,6 +672,13 @@ function displayTeam(side, team) {
 
   document.getElementById(side + "DefExplosive").textContent =
     formatNumber(team.defense?.explosiveness);
+
+
+  const sosRank =
+    sosTeam?.resumeRanks?.strengthOfSchedule;
+
+  document.getElementById(side + "SOS").textContent =
+    formatSOS(sosRank);
 }
 
 
@@ -743,6 +771,13 @@ function updateMatchup() {
     findTeam(homeName);
 
 
+  const awaySOS =
+    findSOS(awayName);
+
+  const homeSOS =
+    findSOS(homeName);
+
+
   document.getElementById("awayHeader").textContent =
     awayName || "AWAY";
 
@@ -758,22 +793,22 @@ function updateMatchup() {
 
   displayTeam(
     "away",
-    awayTeam
+    awayTeam,
+    awaySOS
   );
 
   displayTeam(
     "home",
-    homeTeam
+    homeTeam,
+    homeSOS
   );
 
 
   /*
     Prediction numbers intentionally remain blank.
 
-    We are building the visual board first.
-
-    The scoring formula comes next after this layout
-    is verified.
+    We are NOT creating a scoring formula until
+    the underlying inputs and model are verified.
   */
 
   clearPredictions();
@@ -798,7 +833,7 @@ function updateMatchup() {
 
 
   document.getElementById("status").textContent =
-    "2026 advanced statistics loaded successfully for " +
+    "2026 advanced statistics and SOS loaded successfully for " +
     awayName +
     " vs " +
     homeName +
@@ -819,40 +854,85 @@ async function loadCFBData() {
 
   try {
 
-    const response =
-      await fetch(
+    /*
+      Load advanced statistics and SOS together.
+      Cache-busting timestamp makes GitHub Pages
+      request the newest files.
+    */
+
+    const timestamp = Date.now();
+
+    const [
+      advancedResponse,
+      sosResponse
+    ] = await Promise.all([
+
+      fetch(
         "data/advanced-2026.json?updated=" +
-        Date.now()
-      );
+        timestamp
+      ),
+
+      fetch(
+        "data/sos-2026.json?updated=" +
+        timestamp
+      )
+
+    ]);
 
 
-    if (!response.ok) {
+    if (!advancedResponse.ok) {
 
       throw new Error(
-        "HTTP " +
-        response.status
+        "Advanced stats HTTP " +
+        advancedResponse.status
       );
-
     }
 
 
-    const data =
-      await response.json();
+    if (!sosResponse.ok) {
+
+      throw new Error(
+        "SOS HTTP " +
+        sosResponse.status
+      );
+    }
+
+
+    const [
+      advancedData,
+      loadedSOSData
+    ] = await Promise.all([
+
+      advancedResponse.json(),
+      sosResponse.json()
+
+    ]);
 
 
     if (
-      !Array.isArray(data) ||
-      data.length === 0
+      !Array.isArray(advancedData) ||
+      advancedData.length === 0
     ) {
 
       throw new Error(
         "Advanced statistics file is empty."
       );
-
     }
 
 
-    cfbData = data;
+    if (
+      !Array.isArray(loadedSOSData) ||
+      loadedSOSData.length === 0
+    ) {
+
+      throw new Error(
+        "SOS file is empty."
+      );
+    }
+
+
+    cfbData = advancedData;
+    sosData = loadedSOSData;
 
 
     const awaySelect =
@@ -879,6 +959,76 @@ async function loadCFBData() {
 
       awayOption.value =
         teamName;
+
+      awayOption.textContent =
+        teamName;
+
+      awaySelect.appendChild(
+        awayOption
+      );
+
+
+      const homeOption =
+        document.createElement("option");
+
+      homeOption.value =
+        teamName;
+
+      homeOption.textContent =
+        teamName;
+
+      homeSelect.appendChild(
+        homeOption
+      );
+
+    });
+
+
+    status.textContent =
+      cfbData.length +
+      " teams loaded with 2026 advanced statistics and SOS.";
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    status.textContent =
+      "Could not load the 2026 advanced statistics and SOS.";
+
+  }
+
+}
+
+
+/* ------------------------------
+   EVENT LISTENERS
+------------------------------ */
+
+document
+  .getElementById("awayTeam")
+  .addEventListener(
+    "change",
+    updateMatchup
+  );
+
+
+document
+  .getElementById("homeTeam")
+  .addEventListener(
+    "change",
+    updateMatchup
+  );
+
+
+/* ------------------------------
+   START WAR ROOM
+------------------------------ */
+
+loadCFBData();
+
+</script>teamName;
 
       awayOption.textContent =
         teamName;
