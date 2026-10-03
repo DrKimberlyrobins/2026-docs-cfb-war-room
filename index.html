@@ -409,10 +409,11 @@ select {
     <div class="comparison-cell metric-name">DEF EXPLOSIVENESS</div>
     <div class="comparison-cell metric-value" id="homeDefExplosive">—</div>
 
+
     <div class="comparison-cell metric-value" id="awaySOS">—</div>
     <div class="comparison-cell metric-name">STRENGTH OF SCHEDULE</div>
     <div class="comparison-cell metric-value" id="homeSOS">—</div>
-    
+
   </div>
 
   <!-- SCORING PREDICTION ENGINE -->
@@ -426,8 +427,6 @@ select {
     </div>
 
     <div class="prediction-table">
-
-      <!-- HEADERS -->
 
       <div class="prediction-header">
         PERIOD
@@ -602,29 +601,31 @@ function removeGreen() {
       element.classList.remove("green");
     });
 }
+
+
 /* =========================================================
    GREEN ADVANTAGE SYSTEM
 
-   GREEN does NOT mean simply "better."
-   GREEN means the difference clears our minimum threshold.
+   Green is selective.
 
    Higher is better:
-   - Offensive PPA
-   - Success Rate
-   - Explosiveness
-   - Points Per Opportunity
+   Offensive PPA
+   Offensive Success Rate
+   Offensive Explosiveness
+   Points Per Opportunity
 
    Lower is better:
-   - Defensive PPA
-   - Defensive Success Rate
-   - Defensive Explosiveness
+   Defensive PPA
+   Defensive Success Rate
+   Defensive Explosiveness
 
-   SOS stays neutral. It is context for the model,
-   not a standalone green signal.
+   SOS remains context only and NEVER receives green.
 ========================================================= */
 
 function addGreen(id) {
-  const element = document.getElementById(id);
+
+  const element =
+    document.getElementById(id);
 
   if (element) {
     element.classList.add("green");
@@ -650,14 +651,17 @@ function compareHigherBetter(
     return;
   }
 
-  const difference = away - home;
+  const difference =
+    away - home;
 
   if (difference >= threshold) {
-    addGreen(awayId);
-  }
 
-  else if (difference <= -threshold) {
+    addGreen(awayId);
+
+  } else if (difference <= -threshold) {
+
     addGreen(homeId);
+
   }
 }
 
@@ -680,14 +684,17 @@ function compareLowerBetter(
     return;
   }
 
-  const difference = away - home;
+  const difference =
+    away - home;
 
   if (difference <= -threshold) {
-    addGreen(awayId);
-  }
 
-  else if (difference >= threshold) {
+    addGreen(awayId);
+
+  } else if (difference >= threshold) {
+
     addGreen(homeId);
+
   }
 }
 
@@ -704,7 +711,7 @@ function applyMetricGreens(
 
   /* OFFENSIVE PPA
      Higher is better.
-     Require at least 0.10 difference.
+     Minimum advantage = 0.10
   */
 
   compareHigherBetter(
@@ -718,7 +725,7 @@ function applyMetricGreens(
 
   /* DEFENSIVE PPA
      Lower is better.
-     Require at least 0.05 difference.
+     Minimum advantage = 0.05
   */
 
   compareLowerBetter(
@@ -732,7 +739,7 @@ function applyMetricGreens(
 
   /* OFFENSIVE SUCCESS RATE
      Higher is better.
-     0.05 = five percentage points.
+     Minimum advantage = 5 percentage points
   */
 
   compareHigherBetter(
@@ -746,6 +753,7 @@ function applyMetricGreens(
 
   /* OFFENSIVE EXPLOSIVENESS
      Higher is better.
+     Minimum advantage = 0.15
   */
 
   compareHigherBetter(
@@ -759,6 +767,7 @@ function applyMetricGreens(
 
   /* POINTS PER OPPORTUNITY
      Higher is better.
+     Minimum advantage = 0.75
   */
 
   compareHigherBetter(
@@ -772,7 +781,7 @@ function applyMetricGreens(
 
   /* DEFENSIVE SUCCESS RATE
      Lower is better.
-     Require five percentage points.
+     Minimum advantage = 5 percentage points
   */
 
   compareLowerBetter(
@@ -786,6 +795,7 @@ function applyMetricGreens(
 
   /* DEFENSIVE EXPLOSIVENESS
      Lower is better.
+     Minimum advantage = 0.15
   */
 
   compareLowerBetter(
@@ -798,13 +808,12 @@ function applyMetricGreens(
 
 
   /*
-     NO SOS GREEN.
+     SOS intentionally receives NO green.
 
-     SOS is still being used by our scoring engine,
-     but we do not declare a team statistically better
-     merely because it played the stronger schedule.
+     SOS still contributes context to the scoring engine.
   */
 }
+
 
 /* =========================================================
    TEAM COMPARISON
@@ -868,14 +877,18 @@ function blendedAverage(
   locationGames
 ) {
 
-  const overall = Number(overallValue);
+  const overall =
+    Number(overallValue);
 
   if (!Number.isFinite(overall)) {
     return null;
   }
 
-  const location = Number(locationValue);
-  const games = Number(locationGames) || 0;
+  const location =
+    Number(locationValue);
+
+  const games =
+    Number(locationGames) || 0;
 
   if (
     !Number.isFinite(location) ||
@@ -1019,8 +1032,10 @@ function mean(values) {
   if (!values.length) return 0;
 
   return (
-    values.reduce((sum, value) => sum + value, 0) /
-    values.length
+    values.reduce(
+      (sum, value) => sum + value,
+      0
+    ) / values.length
   );
 }
 
@@ -1255,15 +1270,17 @@ function advancedAdjustment(
   let maxAdjustment;
 
   if (period === "q1") {
+
     maxAdjustment = 2.5;
-  }
 
-  else if (period === "h1") {
+  } else if (period === "h1") {
+
     maxAdjustment = 5.0;
-  }
 
-  else {
+  } else {
+
     maxAdjustment = 8.0;
+
   }
 
 
@@ -1399,18 +1416,14 @@ function displayPeriodProjection(
     totalId = "total1Q";
     marginId = "margin1Q";
 
-  }
-
-  else if (period === "h1") {
+  } else if (period === "h1") {
 
     awayId = "away1H";
     homeId = "home1H";
     totalId = "total1H";
     marginId = "margin1H";
 
-  }
-
-  else {
+  } else {
 
     awayId = "awayFull";
     homeId = "homeFull";
@@ -1606,13 +1619,24 @@ function updateMatchup() {
 
   displayTeam(
     "home",
-    applyMetricGreens(
-  awayTeam,
-  homeTeam
-);
     homeTeam,
     homeSOS
   );
+
+
+  /*
+     Apply green only after both team comparison
+     values have been placed on the board.
+  */
+
+  if (awayTeam && homeTeam) {
+
+    applyMetricGreens(
+      awayTeam,
+      homeTeam
+    );
+
+  }
 
 
   if (!awayName || !homeName) {
