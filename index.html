@@ -2108,6 +2108,7 @@ function resetMarketAnalysis() {
    ========================================================= */
 
 function analyzeSpreadMarket(
+function analyzeSpreadMarket(
   awayTeam,
   homeTeam,
   awaySOS,
@@ -2123,26 +2124,61 @@ function analyzeSpreadMarket(
   analysis.score = null;
 
 
+  /*
+     PROVE IT SAFETY:
+
+     Missing spread data must remain missing.
+     JavaScript Number(null) equals 0, so we MUST
+     reject null/blank values before converting them.
+  */
+
+  const awayLineRaw =
+    marketBoardLines.spread.awayLine;
+
+  const homeLineRaw =
+    marketBoardLines.spread.homeLine;
+
+  const awayProjectionRaw =
+    marketBoardProjection.full.away;
+
+  const homeProjectionRaw =
+    marketBoardProjection.full.home;
+
+
+  if (
+    awayLineRaw === null ||
+    awayLineRaw === undefined ||
+    String(awayLineRaw).trim() === "" ||
+
+    homeLineRaw === null ||
+    homeLineRaw === undefined ||
+    String(homeLineRaw).trim() === "" ||
+
+    awayProjectionRaw === null ||
+    awayProjectionRaw === undefined ||
+    String(awayProjectionRaw).trim() === "" ||
+
+    homeProjectionRaw === null ||
+    homeProjectionRaw === undefined ||
+    String(homeProjectionRaw).trim() === ""
+  ) {
+
+    return analysis;
+
+  }
+
+
   const awayLine =
-    Number(
-      marketBoardLines.spread.awayLine
-    );
+    Number(awayLineRaw);
 
   const homeLine =
-    Number(
-      marketBoardLines.spread.homeLine
-    );
-
+    Number(homeLineRaw);
 
   const awayProjection =
-    Number(
-      marketBoardProjection.full.away
-    );
+    Number(awayProjectionRaw);
 
   const homeProjection =
-    Number(
-      marketBoardProjection.full.home
-    );
+    Number(homeProjectionRaw);
 
 
   if (
@@ -2156,130 +2192,12 @@ function analyzeSpreadMarket(
 
   }
 
-  function displaySpreadAnalysis(
-  awayName,
-  homeName,
-  awayTeam,
-  homeTeam,
-  awaySOS,
-  homeSOS
-) {
-
-  const bookElement =
-    document.getElementById("spreadBook");
-
-  const projectionElement =
-    document.getElementById("spreadProjection");
-
-  const edgeElement =
-    document.getElementById("spreadEdge");
-
-  const verdictElement =
-    document.getElementById("spreadVerdict");
-
-
-  if (
-    !bookElement ||
-    !projectionElement ||
-    !edgeElement ||
-    !verdictElement
-  ) {
-    return;
-  }
-
-
-  const awayLine =
-    Number(
-      marketBoardLines.spread.awayLine
-    );
-
-  const homeLine =
-    Number(
-      marketBoardLines.spread.homeLine
-    );
-
 
   /*
-     No verified spread = stop.
+     Projected score difference:
 
-     Never manufacture or assume a sportsbook line.
-  */
-
-  if (
-    !Number.isFinite(awayLine) ||
-    !Number.isFinite(homeLine)
-  ) {
-
-    bookElement.textContent = "—";
-    edgeElement.textContent = "—";
-    verdictElement.textContent = "NO MARKET";
-    verdictElement.classList.remove("green");
-
-    return;
-  }
-
-
-  bookElement.textContent =
-    awayName +
-    " " +
-    (awayLine > 0 ? "+" : "") +
-    awayLine +
-    " | " +
-    homeName +
-    " " +
-    (homeLine > 0 ? "+" : "") +
-    homeLine;
-
-
-  const analysis =
-    analyzeSpreadMarket(
-      awayTeam,
-      homeTeam,
-      awaySOS,
-      homeSOS
-    );
-
-
-  if (analysis.side === "AWAY") {
-
-    edgeElement.textContent =
-      awayName +
-      " " +
-      formatEdge(analysis.edge);
-
-  } else if (analysis.side === "HOME") {
-
-    edgeElement.textContent =
-      homeName +
-      " " +
-      formatEdge(analysis.edge);
-
-  } else {
-
-    edgeElement.textContent = "—";
-
-  }
-
-
-  verdictElement.textContent =
-    analysis.verdict;
-
-
-  /*
-     PROVE IT:
-     LEAN and PASS do NOT receive green.
-  */
-
-  verdictElement.classList.remove("green");
-
-}
-
-
-  /*
-     Projected score difference from AWAY perspective.
-
-     Positive = away projected to win.
-     Negative = home projected to win.
+     Positive = AWAY projected ahead.
+     Negative = HOME projected ahead.
   */
 
   const projectedDifference =
@@ -2287,11 +2205,21 @@ function analyzeSpreadMarket(
 
 
   /*
-     ATS cushion:
+     Cover margin measures how far the War Room
+     projection sits beyond each team's spread.
 
-     projected score difference + spread.
+     Example:
 
-     Positive means that side projects to cover.
+     War Room:
+     HOME by 3
+
+     Book:
+     HOME -10
+
+     HOME cover margin = -7
+     AWAY cover margin = +7
+
+     Therefore the projection favors AWAY +10.
   */
 
   const awayCoverMargin =
@@ -2301,24 +2229,25 @@ function analyzeSpreadMarket(
     -projectedDifference + homeLine;
 
 
-  let preferredSide;
-  let preferredEdge;
+  let preferredSide = null;
+  let preferredEdge = 0;
 
 
-  if (awayCoverMargin > homeCoverMargin) {
+  if (
+    awayCoverMargin >
+    homeCoverMargin
+  ) {
 
     preferredSide = "AWAY";
     preferredEdge = awayCoverMargin;
 
-  } else if (homeCoverMargin > awayCoverMargin) {
+  } else if (
+    homeCoverMargin >
+    awayCoverMargin
+  ) {
 
     preferredSide = "HOME";
     preferredEdge = homeCoverMargin;
-
-  } else {
-
-    preferredSide = null;
-    preferredEdge = 0;
 
   }
 
@@ -2338,13 +2267,21 @@ function analyzeSpreadMarket(
 
   if (preferredSide === "AWAY") {
 
-    evidenceFor = evidence.away;
-    evidenceAgainst = evidence.home;
+    evidenceFor =
+      evidence.away;
 
-  } else if (preferredSide === "HOME") {
+    evidenceAgainst =
+      evidence.home;
 
-    evidenceFor = evidence.home;
-    evidenceAgainst = evidence.away;
+  } else if (
+    preferredSide === "HOME"
+  ) {
+
+    evidenceFor =
+      evidence.home;
+
+    evidenceAgainst =
+      evidence.away;
 
   }
 
@@ -2372,25 +2309,2054 @@ function analyzeSpreadMarket(
     verdict.status;
 
   analysis.score =
-    Math.abs(preferredEdge);
+    Number.isFinite(preferredEdge)
+      ? Math.abs(preferredEdge)
+      : null;
 
 
   return analysis;
 }
-  
+
+
+/* =========================================================
+   SPREAD MARKET DISPLAY
+   ========================================================= */
+
+function displaySpreadAnalysis(
+  awayName,
+  homeName,
+  awayTeam,
+  homeTeam,
+  awaySOS,
+  homeSOS
+) {
+
+  const bookElement =
+    document.getElementById("spreadBook");
+
+  const edgeElement =
+    document.getElementById("spreadEdge");
+
+  const verdictElement =
+    document.getElementById("spreadVerdict");
+
+
+  if (
+    !bookElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+
+    return;
+
+  }
+
+
+  const awayLineRaw =
+    marketBoardLines.spread.awayLine;
+
+  const homeLineRaw =
+    marketBoardLines.spread.homeLine;
+
+
+  /*
+     Missing verified spread = NO MARKET.
+
+     Never convert null into a fake zero spread.
+  */
+
+  if (
+    awayLineRaw === null ||
+    awayLineRaw === undefined ||
+    String(awayLineRaw).trim() === "" ||
+
+    homeLineRaw === null ||
+    homeLineRaw === undefined ||
+    String(homeLineRaw).trim() === ""
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  const awayLine =
+    Number(awayLineRaw);
+
+  const homeLine =
+    Number(homeLineRaw);
+
+
+  if (
+    !Number.isFinite(awayLine) ||
+    !Number.isFinite(homeLine)
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  bookElement.textContent =
+    awayName +
+    " " +
+    (awayLine > 0 ? "+" : "") +
+    awayLine +
+    " | " +
+    homeName +
+    " " +
+    (homeLine > 0 ? "+" : "") +
+    homeLine;
+
+
+  const analysis =
+    analyzeSpreadMarket(
+      awayTeam,
+      homeTeam,
+      awaySOS,
+      homeSOS
+    );
+
+
+  if (
+    analysis.side === "AWAY" &&
+    Number.isFinite(analysis.edge)
+  ) {
+
+    edgeElement.textContent =
+      awayName +
+      " " +
+      formatEdge(
+        Math.abs(analysis.edge)
+      );
+
+  } else if (
+    analysis.side === "HOME" &&
+    Number.isFinite(analysis.edge)
+  ) {
+
+    edgeElement.textContent =
+      homeName +
+      " " +
+      formatEdge(
+        Math.abs(analysis.edge)
+      );
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    analysis.verdict;
+
+  /*
+     LEAN is intentionally NOT green.
+     Green will only be awarded after a market
+     satisfies a validated QUALIFIED rule.
+  */
+
+  verdictElement.classList.remove(
+    "green"
+  );
+}
+/* =========================================================
+   GAME TOTAL MARKET ANALYSIS
+
+   Compares the verified full-game total with the
+   War Room's projected full-game total.
+
+   Positive edge = OVER direction.
+   Negative edge = UNDER direction.
+
+   This does NOT automatically create a QUALIFIED play.
+   ========================================================= */
+
+function analyzeGameTotalMarket() {
+
+  const analysis =
+    marketAnalysis.gameTotal;
+
+  analysis.edge = null;
+  analysis.side = null;
+  analysis.verdict = "NO MARKET";
+  analysis.score = null;
+
+
+  const projection =
+    marketBoardProjection.full.total;
+
+  const marketLine =
+    marketBoardLines.gameTotal.line;
+
+
+  /*
+     PROVE IT:
+     No verified total = no analysis.
+
+     calculateMarketEdge() protects us from
+     turning missing market data into zero.
+  */
+
+  const edge =
+    calculateMarketEdge(
+      projection,
+      marketLine
+    );
+
+
+  if (!Number.isFinite(edge)) {
+
+    return analysis;
+
+  }
+
+
+  let side = null;
+
+
+  if (edge > 0) {
+
+    side = "OVER";
+
+  } else if (edge < 0) {
+
+    side = "UNDER";
+
+  }
+
+
+  analysis.edge =
+    edge;
+
+  analysis.side =
+    side;
+
+  analysis.score =
+    Math.abs(edge);
+
+
+  /*
+     The War Room can measure disagreement between
+     its projection and the market.
+
+     But the existing matchup evidence profile is
+     TEAM-SIDE evidence.
+
+     It does NOT yet prove OVER or UNDER.
+
+     Therefore Game Total earns LEAN at most until
+     total-specific qualification rules are validated.
+  */
+
+  if (side) {
+
+    analysis.verdict = "LEAN";
+
+  } else {
+
+    analysis.verdict = "PASS";
+
+  }
+
+
+  return analysis;
+}
+
+
+/* =========================================================
+   GAME TOTAL DISPLAY
+   ========================================================= */
+
+function displayGameTotalAnalysis() {
+
+  const bookElement =
+    document.getElementById(
+      "gameTotalBook"
+    );
+
+  const edgeElement =
+    document.getElementById(
+      "gameTotalEdge"
+    );
+
+  const verdictElement =
+    document.getElementById(
+      "gameTotalVerdict"
+    );
+
+
+  if (
+    !bookElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+
+    return;
+
+  }
+
+
+  const marketLine =
+    marketBoardLines.gameTotal.line;
+
+
+  if (
+    marketLine === null ||
+    marketLine === undefined ||
+    String(marketLine).trim() === ""
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  const numericLine =
+    Number(marketLine);
+
+
+  if (!Number.isFinite(numericLine)) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  bookElement.textContent =
+    numericLine.toFixed(1);
+
+
+  const analysis =
+    analyzeGameTotalMarket();
+
+
+  if (
+    analysis.side &&
+    Number.isFinite(analysis.edge)
+  ) {
+
+    edgeElement.textContent =
+      analysis.side +
+      " " +
+      formatEdge(
+        Math.abs(analysis.edge)
+      );
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    analysis.verdict;
+
+  /*
+     LEAN is not green.
+  */
+
+  verdictElement.classList.remove(
+    "green"
+  );
+}
+
+
+/* =========================================================
+   TEAM TOTAL MARKET ANALYSIS
+
+   Evaluates AWAY and HOME team totals separately.
+
+   The War Room compares:
+   AWAY projected score vs AWAY team total
+   HOME projected score vs HOME team total
+
+   The larger measurable disagreement is retained.
+
+   This does NOT automatically create a QUALIFIED play.
+   ========================================================= */
+
+function analyzeTeamTotalMarket() {
+
+  const analysis =
+    marketAnalysis.teamTotal;
+
+  analysis.edge = null;
+  analysis.side = null;
+  analysis.verdict = "NO MARKET";
+  analysis.score = null;
+
+
+  const awayProjection =
+    marketBoardProjection.full.away;
+
+  const homeProjection =
+    marketBoardProjection.full.home;
+
+
+  const awayLine =
+    marketBoardLines.teamTotal.awayLine;
+
+  const homeLine =
+    marketBoardLines.teamTotal.homeLine;
+
+
+  const awayEdge =
+    calculateMarketEdge(
+      awayProjection,
+      awayLine
+    );
+
+  const homeEdge =
+    calculateMarketEdge(
+      homeProjection,
+      homeLine
+    );
+
+
+  /*
+     If neither team has a verified team-total line,
+     there is no market to analyze.
+  */
+
+  if (
+    !Number.isFinite(awayEdge) &&
+    !Number.isFinite(homeEdge)
+  ) {
+
+    return analysis;
+
+  }
+
+
+  let team = null;
+  let edge = null;
+
+
+  /*
+     Compare the absolute disagreements.
+
+     We are NOT saying the larger disagreement
+     automatically qualifies.
+
+     We are simply identifying which available
+     team total deserves attention first.
+  */
+
+  if (
+    Number.isFinite(awayEdge) &&
+    (
+      !Number.isFinite(homeEdge) ||
+      Math.abs(awayEdge) >=
+      Math.abs(homeEdge)
+    )
+  ) {
+
+    team = "AWAY";
+    edge = awayEdge;
+
+  } else {
+
+    team = "HOME";
+    edge = homeEdge;
+
+  }
+
+
+  let direction = null;
+
+
+  if (edge > 0) {
+
+    direction = "OVER";
+
+  } else if (edge < 0) {
+
+    direction = "UNDER";
+
+  }
+
+
+  analysis.edge =
+    edge;
+
+  analysis.side =
+    direction
+      ? team + " " + direction
+      : team;
+
+  analysis.score =
+    Math.abs(edge);
+
+
+  /*
+     A projected team score above/below the book
+     identifies disagreement.
+
+     But our existing evidence profile does not yet
+     prove a team-total OVER or UNDER.
+
+     Until scoring-specific thresholds are validated,
+     this earns LEAN at most.
+  */
+
+  if (direction) {
+
+    analysis.verdict = "LEAN";
+
+  } else {
+
+    analysis.verdict = "PASS";
+
+  }
+
+
+  return analysis;
+}
+
+
+/* =========================================================
+   TEAM TOTAL DISPLAY
+   ========================================================= */
+
+function displayTeamTotalAnalysis(
+  awayName,
+  homeName
+) {
+
+  const bookElement =
+    document.getElementById(
+      "teamTotalBook"
+    );
+
+  const edgeElement =
+    document.getElementById(
+      "teamTotalEdge"
+    );
+
+  const verdictElement =
+    document.getElementById(
+      "teamTotalVerdict"
+    );
+
+
+  if (
+    !bookElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+
+    return;
+
+  }
+
+
+  const awayRaw =
+    marketBoardLines.teamTotal.awayLine;
+
+  const homeRaw =
+    marketBoardLines.teamTotal.homeLine;
+
+
+  const awayExists =
+    awayRaw !== null &&
+    awayRaw !== undefined &&
+    String(awayRaw).trim() !== "" &&
+    Number.isFinite(
+      Number(awayRaw)
+    );
+
+
+  const homeExists =
+    homeRaw !== null &&
+    homeRaw !== undefined &&
+    String(homeRaw).trim() !== "" &&
+    Number.isFinite(
+      Number(homeRaw)
+    );
+
+
+  /*
+     Neither side has a verified team total.
+  */
+
+  if (
+    !awayExists &&
+    !homeExists
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  /*
+     Build the book display using ONLY
+     verified team-total lines that exist.
+  */
+
+  const bookParts = [];
+
+
+  if (awayExists) {
+
+    bookParts.push(
+      awayName +
+      " " +
+      Number(awayRaw).toFixed(1)
+    );
+
+  }
+
+
+  if (homeExists) {
+
+    bookParts.push(
+      homeName +
+      " " +
+      Number(homeRaw).toFixed(1)
+    );
+
+  }
+
+
+  bookElement.textContent =
+    bookParts.join(" | ");
+
+
+  const analysis =
+    analyzeTeamTotalMarket();
+
+
+  /*
+     Convert AWAY/HOME back into the actual team name
+     for the visible Market Board.
+  */
+
+  if (
+    analysis.side &&
+    Number.isFinite(analysis.edge)
+  ) {
+
+    const pieces =
+      analysis.side.split(" ");
+
+    const teamSide =
+      pieces[0];
+
+    const direction =
+      pieces[1] || "";
+
+
+    let teamName = "";
+
+
+    if (teamSide === "AWAY") {
+
+      teamName = awayName;
+
+    } else if (
+      teamSide === "HOME"
+    ) {
+
+      teamName = homeName;
+
+    }
+
+
+    edgeElement.textContent =
+      teamName +
+      (direction
+        ? " " + direction
+        : "") +
+      " " +
+      formatEdge(
+        Math.abs(analysis.edge)
+      );
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    analysis.verdict;
+
+  /*
+     LEAN is not green.
+  */
+
+  verdictElement.classList.remove(
+    "green"
+  );
+}
+/* =========================================================
+   FIRST HALF TOTAL MARKET ANALYSIS
+
+   Compares the War Room's projected 1H combined total
+   with the verified 1H market total.
+
+   Positive edge = OVER direction.
+   Negative edge = UNDER direction.
+
+   This does NOT automatically create a QUALIFIED play.
+   ========================================================= */
+
+function analyzeFirstHalfMarket() {
+
+  const analysis =
+    marketAnalysis.firstHalf;
+
+  analysis.edge = null;
+  analysis.side = null;
+  analysis.verdict = "NO MARKET";
+  analysis.score = null;
+
+
+  const projection =
+    marketBoardProjection.h1.total;
+
+  const marketLine =
+    marketBoardLines.firstHalf.total;
+
+
+  const edge =
+    calculateMarketEdge(
+      projection,
+      marketLine
+    );
+
+
+  if (!Number.isFinite(edge)) {
+
+    return analysis;
+
+  }
+
+
+  let side = null;
+
+
+  if (edge > 0) {
+
+    side = "OVER";
+
+  } else if (edge < 0) {
+
+    side = "UNDER";
+
+  }
+
+
+  analysis.edge =
+    edge;
+
+  analysis.side =
+    side;
+
+  analysis.score =
+    Math.abs(edge);
+
+
+  /*
+     The projection may disagree with the book,
+     but we have not yet historically validated
+     a 1H-total qualification threshold.
+
+     Therefore 1H TOTAL earns LEAN at most.
+  */
+
+  if (side) {
+
+    analysis.verdict = "LEAN";
+
+  } else {
+
+    analysis.verdict = "PASS";
+
+  }
+
+
+  return analysis;
+}
+
+
+/* =========================================================
+   FIRST HALF TOTAL DISPLAY
+   ========================================================= */
+
+function displayFirstHalfAnalysis() {
+
+  const bookElement =
+    document.getElementById(
+      "firstHalfBook"
+    );
+
+  const edgeElement =
+    document.getElementById(
+      "firstHalfEdge"
+    );
+
+  const verdictElement =
+    document.getElementById(
+      "firstHalfVerdict"
+    );
+
+
+  if (
+    !bookElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+
+    return;
+
+  }
+
+
+  const marketLine =
+    marketBoardLines.firstHalf.total;
+
+
+  /*
+     PROVE IT:
+     Missing 1H total stays missing.
+  */
+
+  if (
+    marketLine === null ||
+    marketLine === undefined ||
+    String(marketLine).trim() === ""
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  const numericLine =
+    Number(marketLine);
+
+
+  if (!Number.isFinite(numericLine)) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  bookElement.textContent =
+    numericLine.toFixed(1);
+
+
+  const analysis =
+    analyzeFirstHalfMarket();
+
+
+  if (
+    analysis.side &&
+    Number.isFinite(analysis.edge)
+  ) {
+
+    edgeElement.textContent =
+      analysis.side +
+      " " +
+      formatEdge(
+        Math.abs(analysis.edge)
+      );
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    analysis.verdict;
+
+  /*
+     LEAN is intentionally not green.
+  */
+
+  verdictElement.classList.remove(
+    "green"
+  );
+}
+
+
+/* =========================================================
+   FIRST QUARTER TOTAL MARKET ANALYSIS
+
+   Compares the War Room's projected 1Q combined total
+   with the verified 1Q market total.
+
+   Positive edge = OVER direction.
+   Negative edge = UNDER direction.
+
+   This does NOT automatically create a QUALIFIED play.
+   ========================================================= */
+
+function analyzeFirstQuarterMarket() {
+
+  const analysis =
+    marketAnalysis.firstQuarter;
+
+  analysis.edge = null;
+  analysis.side = null;
+  analysis.verdict = "NO MARKET";
+  analysis.score = null;
+
+
+  const projection =
+    marketBoardProjection.q1.total;
+
+  const marketLine =
+    marketBoardLines.firstQuarter.total;
+
+
+  const edge =
+    calculateMarketEdge(
+      projection,
+      marketLine
+    );
+
+
+  if (!Number.isFinite(edge)) {
+
+    return analysis;
+
+  }
+
+
+  let side = null;
+
+
+  if (edge > 0) {
+
+    side = "OVER";
+
+  } else if (edge < 0) {
+
+    side = "UNDER";
+
+  }
+
+
+  analysis.edge =
+    edge;
+
+  analysis.side =
+    side;
+
+  analysis.score =
+    Math.abs(edge);
+
+
+  /*
+     The projection may disagree with the book,
+     but we have not yet historically validated
+     a 1Q-total qualification threshold.
+
+     Therefore 1Q TOTAL earns LEAN at most.
+  */
+
+  if (side) {
+
+    analysis.verdict = "LEAN";
+
+  } else {
+
+    analysis.verdict = "PASS";
+
+  }
+
+
+  return analysis;
+}
+
+
+/* =========================================================
+   FIRST QUARTER TOTAL DISPLAY
+   ========================================================= */
+
+function displayFirstQuarterAnalysis() {
+
+  const bookElement =
+    document.getElementById(
+      "firstQuarterBook"
+    );
+
+  const edgeElement =
+    document.getElementById(
+      "firstQuarterEdge"
+    );
+
+  const verdictElement =
+    document.getElementById(
+      "firstQuarterVerdict"
+    );
+
+
+  if (
+    !bookElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+
+    return;
+
+  }
+
+
+  const marketLine =
+    marketBoardLines.firstQuarter.total;
+
+
+  /*
+     PROVE IT:
+     Missing 1Q total stays missing.
+  */
+
+  if (
+    marketLine === null ||
+    marketLine === undefined ||
+    String(marketLine).trim() === ""
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  const numericLine =
+    Number(marketLine);
+
+
+  if (!Number.isFinite(numericLine)) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  bookElement.textContent =
+    numericLine.toFixed(1);
+
+
+  const analysis =
+    analyzeFirstQuarterMarket();
+
+
+  if (
+    analysis.side &&
+    Number.isFinite(analysis.edge)
+  ) {
+
+    edgeElement.textContent =
+      analysis.side +
+      " " +
+      formatEdge(
+        Math.abs(analysis.edge)
+      );
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    analysis.verdict;
+
+  /*
+     LEAN is intentionally not green.
+  */
+
+  verdictElement.classList.remove(
+    "green"
+  );
+}
+/* =========================================================
+   MONEYLINE MARKET ANALYSIS
+
+   IMPORTANT PROVE IT RULE:
+
+   A projected winner is NOT the same thing as a
+   moneyline betting edge.
+
+   To measure a true moneyline edge, the War Room needs:
+   1. A calibrated win probability.
+   2. A fair moneyline derived from that probability.
+   3. A verified market moneyline.
+
+   We do not yet have a validated win-probability model.
+
+   Therefore the War Room may show the projected winner,
+   but Moneyline CANNOT qualify or receive a fake edge.
+   ========================================================= */
+
+function analyzeMoneylineMarket() {
+
+  const analysis =
+    marketAnalysis.moneyline;
+
+  analysis.edge = null;
+  analysis.side = null;
+  analysis.verdict = "NO MARKET";
+  analysis.score = null;
+
+
+  const awayPriceRaw =
+    marketBoardLines.moneyline.awayPrice;
+
+  const homePriceRaw =
+    marketBoardLines.moneyline.homePrice;
+
+
+  const awayExists =
+    awayPriceRaw !== null &&
+    awayPriceRaw !== undefined &&
+    String(awayPriceRaw).trim() !== "" &&
+    Number.isFinite(
+      Number(awayPriceRaw)
+    );
+
+
+  const homeExists =
+    homePriceRaw !== null &&
+    homePriceRaw !== undefined &&
+    String(homePriceRaw).trim() !== "" &&
+    Number.isFinite(
+      Number(homePriceRaw)
+    );
+
+
+  /*
+     No verified moneyline prices.
+  */
+
+  if (
+    !awayExists &&
+    !homeExists
+  ) {
+
+    return analysis;
+
+  }
+
+
+  const awayProjection =
+    marketBoardProjection.full.away;
+
+  const homeProjection =
+    marketBoardProjection.full.home;
+
+
+  if (
+    !Number.isFinite(awayProjection) ||
+    !Number.isFinite(homeProjection)
+  ) {
+
+    analysis.verdict = "PASS";
+    return analysis;
+
+  }
+
+
+  if (
+    awayProjection >
+    homeProjection
+  ) {
+
+    analysis.side = "AWAY";
+
+  } else if (
+    homeProjection >
+    awayProjection
+  ) {
+
+    analysis.side = "HOME";
+
+  } else {
+
+    analysis.side = "EVEN";
+
+  }
+
+
+  /*
+     NO fabricated numerical edge.
+
+     We deliberately leave:
+       analysis.edge = null
+       analysis.score = null
+
+     That prevents Moneyline from entering the numerical
+     ranking until a real fair-odds model exists.
+  */
+
+  analysis.verdict = "PASS";
+
+
+  return analysis;
+}
+
+
+/* =========================================================
+   MONEYLINE DISPLAY
+   ========================================================= */
+
+function displayMoneylineAnalysis(
+  awayName,
+  homeName
+) {
+
+  const bookElement =
+    document.getElementById(
+      "moneylineBook"
+    );
+
+  const edgeElement =
+    document.getElementById(
+      "moneylineEdge"
+    );
+
+  const verdictElement =
+    document.getElementById(
+      "moneylineVerdict"
+    );
+
+
+  if (
+    !bookElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+
+    return;
+
+  }
+
+
+  const awayRaw =
+    marketBoardLines.moneyline.awayPrice;
+
+  const homeRaw =
+    marketBoardLines.moneyline.homePrice;
+
+
+  const awayExists =
+    awayRaw !== null &&
+    awayRaw !== undefined &&
+    String(awayRaw).trim() !== "" &&
+    Number.isFinite(
+      Number(awayRaw)
+    );
+
+
+  const homeExists =
+    homeRaw !== null &&
+    homeRaw !== undefined &&
+    String(homeRaw).trim() !== "" &&
+    Number.isFinite(
+      Number(homeRaw)
+    );
+
+
+  if (
+    !awayExists &&
+    !homeExists
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+
+    verdictElement.textContent =
+      "NO MARKET";
+
+    verdictElement.classList.remove(
+      "green"
+    );
+
+    return;
+
+  }
+
+
+  const bookParts = [];
+
+
+  if (awayExists) {
+
+    const awayPrice =
+      Number(awayRaw);
+
+    bookParts.push(
+      awayName +
+      " " +
+      (awayPrice > 0 ? "+" : "") +
+      awayPrice
+    );
+
+  }
+
+
+  if (homeExists) {
+
+    const homePrice =
+      Number(homeRaw);
+
+    bookParts.push(
+      homeName +
+      " " +
+      (homePrice > 0 ? "+" : "") +
+      homePrice
+    );
+
+  }
+
+
+  bookElement.textContent =
+    bookParts.join(" | ");
+
+
+  const analysis =
+    analyzeMoneylineMarket();
+
+
+  /*
+     Show projected winner for context,
+     but DO NOT call it a betting edge.
+  */
+
+  if (
+    analysis.side === "AWAY"
+  ) {
+
+    edgeElement.textContent =
+      awayName + " PROJECTED WINNER";
+
+  } else if (
+    analysis.side === "HOME"
+  ) {
+
+    edgeElement.textContent =
+      homeName + " PROJECTED WINNER";
+
+  } else if (
+    analysis.side === "EVEN"
+  ) {
+
+    edgeElement.textContent =
+      "PROJECTED EVEN";
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    "PASS — NO FAIR ODDS MODEL";
+
+  verdictElement.classList.remove(
+    "green"
+  );
+}
+
+
+/* =========================================================
+   SIX-MARKET RANKING
+
+   Ranking and qualification are SEPARATE.
+
+   A #1 ranked market can still be:
+   LEAN
+   PASS
+   or NO MARKET.
+
+   Ranking only compares measurable projection-vs-market
+   disagreement among markets with a valid numerical score.
+
+   Moneyline is excluded until the War Room has a
+   defensible fair-odds model.
+   ========================================================= */
+
+function rankMarketBoard() {
+
+  /*
+     First clear every visible rank.
+  */
+
+  const rankIds = {
+    spread: "spreadRank",
+    moneyline: "moneylineRank",
+    gameTotal: "gameTotalRank",
+    teamTotal: "teamTotalRank",
+    firstHalf: "firstHalfRank",
+    firstQuarter: "firstQuarterRank"
+  };
+
+
+  Object.values(rankIds)
+    .forEach(id => {
+
+      const element =
+        document.getElementById(id);
+
+      if (element) {
+        element.textContent = "—";
+      }
+
+    });
+
+
+  /*
+     Only markets with a real measurable score
+     are allowed into numerical ranking.
+  */
+
+  const candidates =
+    Object.entries(marketAnalysis)
+      .filter(
+        ([marketName, analysis]) => {
+
+          if (
+            marketName === "moneyline"
+          ) {
+
+            return false;
+
+          }
+
+
+          return (
+            Number.isFinite(
+              analysis.score
+            ) &&
+            analysis.verdict !==
+              "NO MARKET"
+          );
+
+        }
+      )
+      .sort(
+        (a, b) =>
+          b[1].score - a[1].score
+      );
+
+
+  /*
+     No measurable markets = no ranking.
+  */
+
+  if (!candidates.length) {
+
+    return [];
+
+  }
+
+
+  candidates.forEach(
+    ([marketName, analysis], index) => {
+
+      const rankElement =
+        document.getElementById(
+          rankIds[marketName]
+        );
+
+
+      if (rankElement) {
+
+        rankElement.textContent =
+          "#" + (index + 1);
+
+      }
+
+
+      /*
+         Store rank in the analysis object too.
+
+         This will help later when the Receipt
+         records the ranked slate.
+      */
+
+      analysis.rank =
+        index + 1;
+
+    }
+  );
+
+
+  return candidates;
+}
+
+
+/* =========================================================
+   MARKET BOARD STOP RULE
+
+   QUALITY OVER QUANTITY.
+
+   Ranking does NOT mean we must select several plays.
+
+   At this stage:
+   - QUALIFIED may continue.
+   - LEAN remains review only.
+   - PASS stops.
+   - NO MARKET stops.
+
+   Because final market-specific qualification thresholds
+   are not historically validated yet, this function will
+   NOT promote LEAN into QUALIFIED.
+   ========================================================= */
+
+function updateMarketBoardStatus() {
+
+  const status =
+    document.getElementById(
+      "marketBoardStatus"
+    );
+
+
+  if (!status) {
+
+    return;
+
+  }
+
+
+  const ranked =
+    Object.entries(marketAnalysis)
+      .filter(
+        ([marketName, analysis]) =>
+          marketName !== "moneyline" &&
+          Number.isFinite(
+            analysis.score
+          ) &&
+          Number.isFinite(
+            analysis.rank
+          )
+      )
+      .sort(
+        (a, b) =>
+          a[1].rank - b[1].rank
+      );
+
+
+  /*
+     No verified measurable markets.
+  */
+
+  if (!ranked.length) {
+
+    status.textContent =
+      "Waiting for verified market lines.";
+
+    return;
+
+  }
+
+
+  const qualified =
+    ranked.filter(
+      ([, analysis]) =>
+        analysis.verdict ===
+        "QUALIFIED"
+    );
+
+
+  const leans =
+    ranked.filter(
+      ([, analysis]) =>
+        analysis.verdict ===
+        "LEAN"
+    );
+
+
+  /*
+     We currently have no historically validated
+     automatic qualification thresholds.
+
+     Therefore ZERO qualified plays is a completely
+     valid War Room result.
+  */
+
+  if (!qualified.length) {
+
+    if (leans.length) {
+
+      status.textContent =
+        "NO QUALIFIED PLAY — " +
+        leans.length +
+        " measurable lean" +
+        (leans.length === 1 ? "" : "s") +
+        " for review. PROVE IT before betting.";
+
+    } else {
+
+      status.textContent =
+        "PASS THE GAME — no market has proven an edge.";
+
+    }
+
+
+    return;
+
+  }
+
+
+  /*
+     Future-ready:
+     Once validated thresholds create QUALIFIED plays,
+     this status reports how many survived the gate.
+
+     It still does not force Best 2 or Best 3.
+  */
+
+  status.textContent =
+    qualified.length +
+    " QUALIFIED MARKET" +
+    (qualified.length === 1 ? "" : "S") +
+    " — STOP when quality drops.";
+}
+
+
+/* =========================================================
+   CLEAR MARKET RANKS
+
+   Prevent an old matchup's ranking from remaining
+   visible after switching teams.
+   ========================================================= */
+
+function clearMarketRanks() {
+
+  Object.values(marketAnalysis)
+    .forEach(analysis => {
+
+      analysis.rank = null;
+
+    });
+
+
+  [
+    "spreadRank",
+    "moneylineRank",
+    "gameTotalRank",
+    "teamTotalRank",
+    "firstHalfRank",
+    "firstQuarterRank"
+  ].forEach(id => {
+
+    const element =
+      document.getElementById(id);
+
+    if (element) {
+
+      element.textContent = "—";
+
+    }
+
+  });
+}
+/* =========================================================
+   RUN COMPLETE PROVE IT MARKET BOARD
+
+   This is the central controller for all six markets.
+
+   It does NOT create sportsbook lines.
+   It only analyzes verified lines already loaded into
+   marketBoardLines.
+   ========================================================= */
+
+function runMarketBoardAnalysis(
+  awayName,
+  homeName,
+  awayTeam,
+  homeTeam,
+  awaySOS,
+  homeSOS
+) {
+
+  /*
+     Clear rankings from the previous analysis
+     before calculating the current matchup.
+  */
+
+  clearMarketRanks();
+
+
+  /*
+     SPREAD
+  */
+
+  displaySpreadAnalysis(
+    awayName,
+    homeName,
+    awayTeam,
+    homeTeam,
+    awaySOS,
+    homeSOS
+  );
+
+
+  /*
+     MONEYLINE
+
+     Projected winner may be displayed,
+     but no moneyline edge is manufactured.
+  */
+
+  displayMoneylineAnalysis(
+    awayName,
+    homeName
+  );
+
+
+  /*
+     FULL-GAME TOTAL
+  */
+
+  displayGameTotalAnalysis();
+
+
+  /*
+     TEAM TOTALS
+  */
+
+  displayTeamTotalAnalysis(
+    awayName,
+    homeName
+  );
+
+
+  /*
+     FIRST-HALF TOTAL
+  */
+
+  displayFirstHalfAnalysis();
+
+
+  /*
+     FIRST-QUARTER TOTAL
+  */
+
+  displayFirstQuarterAnalysis();
+
+
+  /*
+     Rank only measurable markets.
+
+     Ranking DOES NOT change verdict.
+  */
+
+  rankMarketBoard();
+
+
+  /*
+     Report whether anything actually survived
+     the PROVE IT qualification gate.
+  */
+
+  updateMarketBoardStatus();
+}
+
+
+/* =========================================================
+   MARKET BOARD PROJECTION DISPLAY
+
+   Sends the existing scoring-engine projections
+   to the visible PROVE IT Market Board.
+
+   These are projections only.
+   They are NOT sportsbook edges.
+   ========================================================= */
+
+function updateMarketBoardProjectionDisplay() {
+
+  const spreadProjection =
+    document.getElementById(
+      "spreadProjection"
+    );
+
+  const moneylineProjection =
+    document.getElementById(
+      "moneylineProjection"
+    );
+
+  const gameTotalProjection =
+    document.getElementById(
+      "gameTotalProjection"
+    );
+
+  const teamTotalProjection =
+    document.getElementById(
+      "teamTotalProjection"
+    );
+
+  const firstHalfProjection =
+    document.getElementById(
+      "firstHalfProjection"
+    );
+
+  const firstQuarterProjection =
+    document.getElementById(
+      "firstQuarterProjection"
+    );
+
+
+  const full =
+    marketBoardProjection.full;
+
+  const h1 =
+    marketBoardProjection.h1;
+
+  const q1 =
+    marketBoardProjection.q1;
+
+
+  /*
+     FULL-GAME SPREAD PROJECTION
+  */
+
+  if (spreadProjection) {
+
+    if (
+      Number.isFinite(full.away) &&
+      Number.isFinite(full.home)
+    ) {
+
+      spreadProjection.textContent =
+        Math.abs(
+          full.away - full.home
+        ).toFixed(1) +
+        " pt margin";
+
+    } else {
+
+      spreadProjection.textContent = "—";
+
+    }
+
+  }
+
+
+  /*
+     MONEYLINE CONTEXT
+
+     This is only the projected winner.
+     It is NOT a fair moneyline.
+  */
+
+  if (moneylineProjection) {
+
+    if (
+      Number.isFinite(full.away) &&
+      Number.isFinite(full.home)
+    ) {
+
+      if (full.away > full.home) {
+
+        moneylineProjection.textContent =
+          "AWAY";
+
+      } else if (
+        full.home > full.away
+      ) {
+
+        moneylineProjection.textContent =
+          "HOME";
+
+      } else {
+
+        moneylineProjection.textContent =
+          "EVEN";
+
+      }
+
+    } else {
+
+      moneylineProjection.textContent = "—";
+
+    }
+
+  }
+
+
+  /*
+     FULL-GAME TOTAL
+  */
+
+  if (gameTotalProjection) {
+
+    gameTotalProjection.textContent =
+      Number.isFinite(full.total)
+        ? full.total.toFixed(1)
+        : "—";
+
+  }
+
+
+  /*
+     TEAM TOTAL PROJECTIONS
+
+     Keep AWAY and HOME separate.
+  */
+
+  if (teamTotalProjection) {
+
+    if (
+      Number.isFinite(full.away) &&
+      Number.isFinite(full.home)
+    ) {
+
+      teamTotalProjection.textContent =
+        "A " +
+        full.away.toFixed(1) +
+        " | H " +
+        full.home.toFixed(1);
+
+    } else {
+
+      teamTotalProjection.textContent = "—";
+
+    }
+
+  }
+
+
+  /*
+     FIRST-HALF TOTAL
+  */
+
+  if (firstHalfProjection) {
+
+    firstHalfProjection.textContent =
+      Number.isFinite(h1.total)
+        ? h1.total.toFixed(1) +
+          " total"
+        : "—";
+
+  }
+
+
+  /*
+     FIRST-QUARTER TOTAL
+  */
+
+  if (firstQuarterProjection) {
+
+    firstQuarterProjection.textContent =
+      Number.isFinite(q1.total)
+        ? q1.total.toFixed(1) +
+          " total"
+        : "—";
+
+  }
+}
+/* =========================================================
+   SAFE MARKET EDGE CALCULATOR
+
+   Missing data must NEVER become zero.
+   ========================================================= */
+
 function calculateMarketEdge(
   projection,
   marketLine
 ) {
 
-  /*
-     PROVE IT:
-     Missing market data must NEVER become zero.
-  */
-
   if (
     projection === null ||
     projection === undefined ||
+    String(projection).trim() === "" ||
     marketLine === null ||
     marketLine === undefined ||
     String(marketLine).trim() === ""
@@ -2422,138 +4388,38 @@ function calculateMarketEdge(
 }
 
 
+/* =========================================================
+   MARKET EDGE FORMATTER
+   ========================================================= */
+
 function formatEdge(value) {
 
   if (!Number.isFinite(value)) {
+
     return "—";
+
   }
+
 
   const rounded =
     Number(value.toFixed(1));
 
+
   if (rounded > 0) {
-    return "+" + rounded.toFixed(1);
+
+    return "+" +
+      rounded.toFixed(1);
+
   }
+
 
   return rounded.toFixed(1);
 }
-  function updateMarketBoardProjectionDisplay() {
+/* =========================================================
+   CLEAR SCORING PREDICTIONS
+========================================================= */
 
-  const q1 =
-    marketBoardProjection.q1;
-
-  const h1 =
-    marketBoardProjection.h1;
-
-  const full =
-    marketBoardProjection.full;
-
-
-  const spreadProjection =
-    document.getElementById("spreadProjection");
-
-  const moneylineProjection =
-    document.getElementById("moneylineProjection");
-
-  const gameTotalProjection =
-    document.getElementById("gameTotalProjection");
-
-  const teamTotalProjection =
-    document.getElementById("teamTotalProjection");
-
-  const firstHalfProjection =
-    document.getElementById("firstHalfProjection");
-
-  const firstQuarterProjection =
-    document.getElementById("firstQuarterProjection");
-
-
-  if (spreadProjection) {
-
-    spreadProjection.textContent =
-      Number.isFinite(full.margin)
-        ? formatProjection(full.margin) + " pt margin"
-        : "—";
-
-  }
-
-
-  if (moneylineProjection) {
-
-    if (
-      Number.isFinite(full.away) &&
-      Number.isFinite(full.home)
-    ) {
-
-      moneylineProjection.textContent =
-        full.away > full.home
-          ? "AWAY"
-          : full.home > full.away
-            ? "HOME"
-            : "EVEN";
-
-    } else {
-
-      moneylineProjection.textContent = "—";
-
-    }
-
-  }
-
-
-  if (gameTotalProjection) {
-
-    gameTotalProjection.textContent =
-      Number.isFinite(full.total)
-        ? formatProjection(full.total)
-        : "—";
-
-  }
-
-
-  if (teamTotalProjection) {
-
-    if (
-      Number.isFinite(full.away) &&
-      Number.isFinite(full.home)
-    ) {
-
-      teamTotalProjection.textContent =
-        "A " +
-        formatProjection(full.away) +
-        " | H " +
-        formatProjection(full.home);
-
-    } else {
-
-      teamTotalProjection.textContent = "—";
-
-    }
-
-  }
-
-
-  if (firstHalfProjection) {
-
-    firstHalfProjection.textContent =
-      Number.isFinite(h1.total)
-        ? formatProjection(h1.total) + " total"
-        : "—";
-
-  }
-
-
-  if (firstQuarterProjection) {
-
-    firstQuarterProjection.textContent =
-      Number.isFinite(q1.total)
-        ? formatProjection(q1.total) + " total"
-        : "—";
-
-  }
-
-}
-  function clearPredictions() {
+function clearPredictions() {
 
   [
     "away1Q",
@@ -2572,12 +4438,20 @@ function formatEdge(value) {
     "marginFull"
   ].forEach(id => {
 
-    document.getElementById(id).textContent =
-      "—";
+    const element =
+      document.getElementById(id);
+
+    if (element) {
+      element.textContent = "—";
+    }
 
   });
 }
 
+
+/* =========================================================
+   DISPLAY PERIOD PROJECTION
+========================================================= */
 
 function displayPeriodProjection(
   period,
@@ -2600,12 +4474,13 @@ function displayPeriodProjection(
     Math.abs(
       awayScore - homeScore
     );
-  
-    /*
-     Feed the existing scoring projection into the
+
+
+  /*
+     Feed the scoring engine into the
      PROVE IT Market Board state.
 
-     This does NOT qualify a market.
+     Projection does NOT equal qualification.
   */
 
   if (marketBoardProjection[period]) {
@@ -2655,22 +4530,43 @@ function displayPeriodProjection(
   }
 
 
-  document.getElementById(awayId).textContent =
-    formatProjection(awayScore);
+  const awayElement =
+    document.getElementById(awayId);
 
-  document.getElementById(homeId).textContent =
-    formatProjection(homeScore);
+  const homeElement =
+    document.getElementById(homeId);
 
-  document.getElementById(totalId).textContent =
-    formatProjection(total);
+  const totalElement =
+    document.getElementById(totalId);
 
-  document.getElementById(marginId).textContent =
-    formatProjection(margin);
+  const marginElement =
+    document.getElementById(marginId);
+
+
+  if (awayElement) {
+    awayElement.textContent =
+      formatProjection(awayScore);
+  }
+
+  if (homeElement) {
+    homeElement.textContent =
+      formatProjection(homeScore);
+  }
+
+  if (totalElement) {
+    totalElement.textContent =
+      formatProjection(total);
+  }
+
+  if (marginElement) {
+    marginElement.textContent =
+      formatProjection(margin);
+  }
 }
 
 
 /* =========================================================
-   RUN ENGINE
+   RUN SCORING ENGINE
 ========================================================= */
 
 function runScoringEngine(
@@ -2696,7 +4592,6 @@ function runScoringEngine(
 
 
   periods.forEach(period => {
-
 
     const awayScore =
       projectTeamScore(
@@ -2733,6 +4628,7 @@ function runScoringEngine(
 
       complete = false;
       return;
+
     }
 
 
@@ -2744,16 +4640,20 @@ function runScoringEngine(
 
   });
 
+
   if (complete) {
+
     updateMarketBoardProjectionDisplay();
+
   }
-  
+
+
   return complete;
 }
 
 
 /* =========================================================
-   LABELS
+   SCORING ENGINE LABELS
 ========================================================= */
 
 function updatePredictionLabels(
@@ -2761,29 +4661,45 @@ function updatePredictionLabels(
   homeName
 ) {
 
-  document.getElementById("awayPredictionHeader").textContent =
-    awayName || "AWAY SCORE";
+  document
+    .getElementById("awayPredictionHeader")
+    .textContent =
+      awayName || "AWAY SCORE";
 
-  document.getElementById("homePredictionHeader").textContent =
-    homeName || "HOME SCORE";
+  document
+    .getElementById("homePredictionHeader")
+    .textContent =
+      homeName || "HOME SCORE";
 
-  document.getElementById("away1QLabel").textContent =
-    awayName || "AWAY";
+  document
+    .getElementById("away1QLabel")
+    .textContent =
+      awayName || "AWAY";
 
-  document.getElementById("home1QLabel").textContent =
-    homeName || "HOME";
+  document
+    .getElementById("home1QLabel")
+    .textContent =
+      homeName || "HOME";
 
-  document.getElementById("away1HLabel").textContent =
-    awayName || "AWAY";
+  document
+    .getElementById("away1HLabel")
+    .textContent =
+      awayName || "AWAY";
 
-  document.getElementById("home1HLabel").textContent =
-    homeName || "HOME";
+  document
+    .getElementById("home1HLabel")
+    .textContent =
+      homeName || "HOME";
 
-  document.getElementById("awayFullLabel").textContent =
-    awayName || "AWAY";
+  document
+    .getElementById("awayFullLabel")
+    .textContent =
+      awayName || "AWAY";
 
-  document.getElementById("homeFullLabel").textContent =
-    homeName || "HOME";
+  document
+    .getElementById("homeFullLabel")
+    .textContent =
+      homeName || "HOME";
 }
 
 
@@ -2794,17 +4710,27 @@ function updatePredictionLabels(
 function updateMatchup() {
 
   removeGreen();
+
   clearPredictions();
+
   clearMarketBoardProjection();
+
   clearMarketBoardLines();
+
   resetMarketAnalysis();
+
+  clearMarketRanks();
 
 
   const awayName =
-    document.getElementById("awayTeam").value;
+    document
+      .getElementById("awayTeam")
+      .value;
 
   const homeName =
-    document.getElementById("homeTeam").value;
+    document
+      .getElementById("homeTeam")
+      .value;
 
 
   const awayTeam =
@@ -2826,11 +4752,15 @@ function updateMatchup() {
     findScoring(homeName);
 
 
-  document.getElementById("awayHeader").textContent =
-    awayName || "AWAY";
+  document
+    .getElementById("awayHeader")
+    .textContent =
+      awayName || "AWAY";
 
-  document.getElementById("homeHeader").textContent =
-    homeName || "HOME";
+  document
+    .getElementById("homeHeader")
+    .textContent =
+      homeName || "HOME";
 
 
   updatePredictionLabels(
@@ -2845,6 +4775,7 @@ function updateMatchup() {
     awaySOS
   );
 
+
   displayTeam(
     "home",
     homeTeam,
@@ -2853,11 +4784,15 @@ function updateMatchup() {
 
 
   /*
-     Apply green only after both team comparison
-     values have been placed on the board.
+     Green on the Team Comparison board
+     remains controlled by the existing
+     evidence thresholds.
   */
 
-  if (awayTeam && homeTeam) {
+  if (
+    awayTeam &&
+    homeTeam
+  ) {
 
     applyMetricGreens(
       awayTeam,
@@ -2867,12 +4802,18 @@ function updateMatchup() {
   }
 
 
-  if (!awayName || !homeName) {
+  if (
+    !awayName ||
+    !homeName
+  ) {
 
-    document.getElementById("status").textContent =
-      "Select two teams to begin matchup analysis.";
+    document
+      .getElementById("status")
+      .textContent =
+        "Select two teams to begin matchup analysis.";
 
     return;
+
   }
 
 
@@ -2883,10 +4824,13 @@ function updateMatchup() {
     !homeScoring
   ) {
 
-    document.getElementById("status").textContent =
-      "Complete matchup data is not available for both teams.";
+    document
+      .getElementById("status")
+      .textContent =
+        "Complete matchup data is not available for both teams.";
 
     return;
+
   }
 
 
@@ -2903,13 +4847,32 @@ function updateMatchup() {
 
   if (!complete) {
 
-    document.getElementById("status").textContent =
-      "The matchup loaded, but a complete projection could not be calculated.";
+    document
+      .getElementById("status")
+      .textContent =
+        "The matchup loaded, but a complete projection could not be calculated.";
 
     return;
+
   }
 
-    displaySpreadAnalysis(
+
+  /*
+     SIX-MARKET PROVE IT CONTROLLER
+
+     Spread
+     Moneyline
+     Game Total
+     Team Total
+     1H Total
+     1Q Total
+
+     This controller analyzes only verified
+     market lines already present in
+     marketBoardLines.
+  */
+
+  runMarketBoardAnalysis(
     awayName,
     homeName,
     awayTeam,
@@ -2918,8 +4881,11 @@ function updateMatchup() {
     homeSOS
   );
 
-  document.getElementById("status").textContent =
-    "EXPERIMENTAL whole-picture projection: scoring history + opponent defense + location/sample protection + PPA + success rate + explosiveness + PPO + SOS.";
+
+  document
+    .getElementById("status")
+    .textContent =
+      "EXPERIMENTAL whole-picture projection: scoring history + opponent defense + location/sample protection + PPA + success rate + explosiveness + PPO + SOS.";
 }
 
 
@@ -2964,24 +4930,32 @@ async function loadCFBData() {
 
 
     if (!advancedResponse.ok) {
+
       throw new Error(
         "Advanced stats HTTP " +
         advancedResponse.status
       );
+
     }
 
+
     if (!sosResponse.ok) {
+
       throw new Error(
         "SOS HTTP " +
         sosResponse.status
       );
+
     }
 
+
     if (!scoringResponse.ok) {
+
       throw new Error(
         "Scoring HTTP " +
         scoringResponse.status
       );
+
     }
 
 
@@ -3002,9 +4976,11 @@ async function loadCFBData() {
       !Array.isArray(advancedData) ||
       advancedData.length === 0
     ) {
+
       throw new Error(
         "Advanced statistics file is empty."
       );
+
     }
 
 
@@ -3012,9 +4988,11 @@ async function loadCFBData() {
       !Array.isArray(loadedSOSData) ||
       loadedSOSData.length === 0
     ) {
+
       throw new Error(
         "SOS file is empty."
       );
+
     }
 
 
@@ -3022,9 +5000,11 @@ async function loadCFBData() {
       !Array.isArray(loadedScoringData) ||
       loadedScoringData.length === 0
     ) {
+
       throw new Error(
         "Scoring profile file is empty."
       );
+
     }
 
 
@@ -3133,4 +5113,4 @@ loadCFBData();
 </script>
 
 </body>
-</html>
+</html>  
