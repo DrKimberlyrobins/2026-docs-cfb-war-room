@@ -4701,12 +4701,1647 @@ function updatePredictionLabels(
       homeName || "HOME";
 }
 
+/* =========================================================
+   KAMBI NCAAF MARKET CONNECTOR
+   PROVE IT RULES:
+   - Exact event match required
+   - OPEN markets only
+   - MAIN_LINE preferred
+   - Missing market stays missing
+   - No substitutions
+   - No manufactured lines
+========================================================= */
 
+const KAMBI_NCAAF_URL =
+  "https://eu.offering-api.kambicdn.com/offering/v2018/pivusmsrl-bil/listView/american_football/ncaaf/all/all/matches.json" +
+  "?lang=en_US" +
+  "&market=US-MS" +
+  "&client_id=200" +
+  "&channel_id=7" +
+  "&useCombined=true" +
+  "&useCombinedLive=true";
+
+
+let kambiNCAAFData = null;
+let kambiNCAAFLoadedAt = 0;
+
+const KAMBI_CACHE_MS =
+  2 * 60 * 1000;
+
+
+/* ---------------------------------------------------------
+   NORMALIZE TEAM NAME
+--------------------------------------------------------- */
+
+function normalizeKambiTeamName(value) {
+
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[.'’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+/* ---------------------------------------------------------
+   NUMERIC HELPERS
+--------------------------------------------------------- */
+
+function kambiNumber(value) {
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const numeric =
+    Number(value);
+
+  return Number.isFinite(numeric)
+    ? numeric
+    : null;
+}
+
+
+function kambiLine(value) {
+
+  const numeric =
+    kambiNumber(value);
+
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  /*
+     Kambi stores many handicap/total lines
+     in thousandths:
+
+     52500 -> 52.5
+     -10000 -> -10
+  */
+
+  if (Math.abs(numeric) >= 1000) {
+    return numeric / 1000;
+  }
+
+  return numeric;
+}
+
+
+function kambiAmericanOdds(outcome) {
+
+  if (!outcome) return null;
+
+  const candidates = [
+    outcome.oddsAmerican,
+    outcome.americanOdds,
+    outcome.odds?.american,
+    outcome.price?.american,
+    outcome.oddsAmericanFormatted
+  ];
+
+  for (const candidate of candidates) {
+
+    if (
+      candidate === null ||
+      candidate === undefined ||
+      candidate === ""
+    ) {
+      continue;
+    }
+
+    if (typeof candidate === "number") {
+      return candidate;
+    }
+
+    const cleaned =
+      String(candidate)
+        .replace(/[^\d+-]/g, "");
+
+    const numeric =
+      Number(cleaned);
+
+    if (Number.isFinite(numeric)) {
+      return numeric;
+    }
+  }
+
+  return null;
+}
+
+
+/* ---------------------------------------------------------
+   SAFE TEXT HELPERS
+--------------------------------------------------------- */
+
+function kambiText(value) {
+
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+function kambiOfferText(offer) {
+
+  return kambiText(
+    [
+      offer?.criterion?.label,
+      offer?.criterion?.englishLabel,
+      offer?.label,
+      offer?.name,
+      offer?.betOfferType?.name,
+      offer?.betOfferType?.label
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+
+function kambiOutcomeText(outcome) {
+
+  return kambiText(
+    [
+      outcome?.label,
+      outcome?.englishLabel,
+      outcome?.name,
+      outcome?.participant,
+      outcome?.participantName,
+      outcome?.type
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+
+/* ---------------------------------------------------------
+   OPEN / MAIN-LINE SAFETY
+--------------------------------------------------------- */
+
+function kambiOfferIsOpen(offer) {
+
+  const status =
+    String(
+      offer?.betOfferStatus ||
+      offer?.status ||
+      ""
+    ).toUpperCase();
+
+  if (!status) {
+    return true;
+  }
+
+  return (
+    status === "OPEN" ||
+    status === "ACTIVE"
+  );
+}
+
+
+function kambiOutcomeIsOpen(outcome) {
+
+  const status =
+    String(
+      outcome?.status ||
+      outcome?.outcomeStatus ||
+      ""
+    ).toUpperCase();
+
+  if (!status) {
+    return true;
+  }
+
+  return (
+    status === "OPEN" ||
+    status === "ACTIVE"
+  );
+}
+
+
+function kambiIsMainLine(offer) {
+
+  const tags = [
+    offer?.tags,
+    offer?.tag,
+    offer?.criterion?.tags
+  ]
+    .flat()
+    .filter(Boolean)
+    .map(value =>
+      String(value).toUpperCase()
+    );
+
+  return tags.some(tag =>
+    tag.includes("MAIN_LINE")
+  );
+}
+
+
+/* ---------------------------------------------------------
+   FIND ARRAYS RECURSIVELY
+
+   Kambi can wrap event/offer data differently between
+   list-view and compact-event responses.
+
+   We collect recognizable objects without assuming
+   one brittle path.
+--------------------------------------------------------- */
+
+function collectKambiObjects(
+  root,
+  predicate,
+  output = [],
+  seen = new Set()
+) {
+
+  if (
+    root === null ||
+    root === undefined
+  ) {
+    return output;
+  }
+
+  if (
+    typeof root !== "object"
+  ) {
+    return output;
+  }
+
+  if (seen.has(root)) {
+    return output;
+  }
+
+  seen.add(root);
+
+
+  if (predicate(root)) {
+    output.push(root);
+  }
+
+
+  if (Array.isArray(root)) {
+
+    root.forEach(item => {
+      collectKambiObjects(
+        item,
+        predicate,
+        output,
+        seen
+      );
+    });
+
+    return output;
+  }
+
+
+  Object.values(root)
+    .forEach(value => {
+
+      collectKambiObjects(
+        value,
+        predicate,
+        output,
+        seen
+      );
+
+    });
+
+
+  return output;
+}
+
+
+/* ---------------------------------------------------------
+   EVENT IDENTIFICATION
+--------------------------------------------------------- */
+
+function looksLikeKambiEvent(object) {
+
+  if (!object || typeof object !== "object") {
+    return false;
+  }
+
+  const hasId =
+    object.id !== undefined ||
+    object.eventId !== undefined;
+
+  const hasName =
+    typeof object.name === "string" ||
+    typeof object.eventName === "string";
+
+  const hasParticipants =
+    Array.isArray(object.participants) ||
+    Array.isArray(object.eventParticipants);
+
+  return (
+    hasId &&
+    (hasName || hasParticipants)
+  );
+}
+
+
+function getKambiEventName(event) {
+
+  return (
+    event?.name ||
+    event?.eventName ||
+    ""
+  );
+}
+
+
+function getKambiParticipants(event) {
+
+  const participants =
+    event?.participants ||
+    event?.eventParticipants ||
+    [];
+
+  return Array.isArray(participants)
+    ? participants
+    : [];
+}
+
+
+function getParticipantName(participant) {
+
+  return (
+    participant?.name ||
+    participant?.participantName ||
+    participant?.label ||
+    ""
+  );
+}
+
+
+function getParticipantHomeAway(participant) {
+
+  return String(
+    participant?.homeAway ||
+    participant?.homeAwayType ||
+    participant?.position ||
+    participant?.type ||
+    ""
+  ).toUpperCase();
+}
+
+
+/* ---------------------------------------------------------
+   EXACT MATCHUP TEST
+--------------------------------------------------------- */
+
+function kambiEventMatches(
+  event,
+  awayName,
+  homeName
+) {
+
+  const wantedAway =
+    normalizeKambiTeamName(awayName);
+
+  const wantedHome =
+    normalizeKambiTeamName(homeName);
+
+  if (!wantedAway || !wantedHome) {
+    return false;
+  }
+
+
+  const participants =
+    getKambiParticipants(event);
+
+
+  let eventAway = "";
+  let eventHome = "";
+
+
+  participants.forEach(participant => {
+
+    const role =
+      getParticipantHomeAway(
+        participant
+      );
+
+    const name =
+      normalizeKambiTeamName(
+        getParticipantName(
+          participant
+        )
+      );
+
+
+    if (
+      role.includes("AWAY")
+  ) {
+      eventAway = name;
+    }
+
+
+    if (
+      role.includes("HOME")
+    ) {
+      eventHome = name;
+    }
+
+  });
+
+
+  /*
+     Preferred match:
+     explicit Kambi HOME/AWAY participants.
+  */
+
+  if (
+    eventAway &&
+    eventHome
+  ) {
+
+    return (
+      eventAway === wantedAway &&
+      eventHome === wantedHome
+    );
+
+  }
+
+
+  /*
+     Safe fallback:
+     event title must contain BOTH exact
+     normalized school names.
+
+     We do NOT reverse the matchup.
+  */
+
+  const eventName =
+    normalizeKambiTeamName(
+      getKambiEventName(event)
+    );
+
+
+  if (!eventName) {
+    return false;
+  }
+
+
+  const awayIndex =
+    eventName.indexOf(
+      wantedAway
+    );
+
+  const homeIndex =
+    eventName.indexOf(
+      wantedHome
+    );
+
+
+  return (
+    awayIndex >= 0 &&
+    homeIndex >= 0 &&
+    awayIndex < homeIndex
+  );
+}
+
+
+/* ---------------------------------------------------------
+   FIND ONE SELECTED EVENT
+--------------------------------------------------------- */
+
+function findKambiEvent(
+  awayName,
+  homeName
+) {
+
+  if (!kambiNCAAFData) {
+    return null;
+  }
+
+
+  const events =
+    collectKambiObjects(
+      kambiNCAAFData,
+      looksLikeKambiEvent
+    );
+
+
+  const matches =
+    events.filter(event =>
+      kambiEventMatches(
+        event,
+        awayName,
+        homeName
+      )
+    );
+
+
+  /*
+     PROVE IT:
+     exactly ONE event must match.
+  */
+
+  if (matches.length !== 1) {
+
+    console.warn(
+      "Kambi exact-event match count:",
+      matches.length,
+      awayName,
+      homeName
+    );
+
+    return null;
+  }
+
+
+  return matches[0];
+}
+
+
+/* ---------------------------------------------------------
+   BET OFFER IDENTIFICATION
+--------------------------------------------------------- */
+
+function looksLikeKambiOffer(object) {
+
+  return (
+    object &&
+    typeof object === "object" &&
+    Array.isArray(object.outcomes) &&
+    object.outcomes.length > 0
+  );
+}
+
+
+function getKambiOffersForEvent(event) {
+
+  /*
+     First use offers physically attached to the
+     selected event.
+  */
+
+  const attached =
+    collectKambiObjects(
+      event,
+      looksLikeKambiOffer
+    );
+
+
+  if (attached.length) {
+    return attached;
+  }
+
+
+  /*
+     Some Kambi list responses keep offers beside
+     the event rather than nested inside it.
+
+     Match them by event ID only.
+  */
+
+  const eventId =
+    event?.id ??
+    event?.eventId;
+
+
+  if (
+    eventId === null ||
+    eventId === undefined
+  ) {
+    return [];
+  }
+
+
+  return collectKambiObjects(
+    kambiNCAAFData,
+    object => {
+
+      if (!looksLikeKambiOffer(object)) {
+        return false;
+      }
+
+      const offerEventId =
+        object?.eventId ??
+        object?.event?.id ??
+        object?.event?.eventId;
+
+      return (
+        String(offerEventId) ===
+        String(eventId)
+      );
+    }
+  );
+}
+
+
+/* ---------------------------------------------------------
+   PREFER MAIN LINE
+--------------------------------------------------------- */
+
+function chooseKambiOffer(offers) {
+
+  const openOffers =
+    offers.filter(
+      kambiOfferIsOpen
+    );
+
+
+  if (!openOffers.length) {
+    return null;
+  }
+
+
+  const mainLines =
+    openOffers.filter(
+      kambiIsMainLine
+    );
+
+
+  if (mainLines.length === 1) {
+    return mainLines[0];
+  }
+
+
+  if (mainLines.length > 1) {
+
+    /*
+       Ambiguous MAIN_LINE is safer than guessing.
+    */
+
+    return null;
+  }
+
+
+  /*
+     If only one open offer exists for the exact
+     market definition, it is safe to use.
+  */
+
+  if (openOffers.length === 1) {
+    return openOffers[0];
+  }
+
+
+  return null;
+}
+
+
+/* ---------------------------------------------------------
+   OUTCOME FINDERS
+--------------------------------------------------------- */
+
+function findOutcome(
+  offer,
+  matcher
+) {
+
+  if (!offer) return null;
+
+
+  const outcomes =
+    Array.isArray(offer.outcomes)
+      ? offer.outcomes
+      : [];
+
+
+  const matches =
+    outcomes.filter(outcome =>
+      kambiOutcomeIsOpen(outcome) &&
+      matcher(
+        kambiOutcomeText(outcome),
+        outcome
+      )
+    );
+
+
+  return matches.length === 1
+    ? matches[0]
+    : null;
+}
+
+
+function outcomeLine(outcome) {
+
+  if (!outcome) return null;
+
+  const candidates = [
+    outcome.line,
+    outcome.handicap,
+    outcome.points,
+    outcome.total,
+    outcome.threshold
+  ];
+
+
+  for (const candidate of candidates) {
+
+    const line =
+      kambiLine(candidate);
+
+    if (Number.isFinite(line)) {
+      return line;
+    }
+
+  }
+
+
+  return null;
+}
+
+
+/* ---------------------------------------------------------
+   MARKET TYPE CLASSIFICATION
+--------------------------------------------------------- */
+
+function isFullGameSpreadOffer(offer) {
+
+  const text =
+    kambiOfferText(offer);
+
+  return (
+    (
+      text.includes("point spread") ||
+      text === "spread" ||
+      text.includes("handicap")
+    ) &&
+    !text.includes("1st half") &&
+    !text.includes("first half") &&
+    !text.includes("1st quarter") &&
+    !text.includes("first quarter")
+  );
+}
+
+
+function isMoneylineOffer(offer) {
+
+  const text =
+    kambiOfferText(offer);
+
+  return (
+    (
+      text.includes("moneyline") ||
+      text.includes("money line") ||
+      text.includes("match winner")
+    ) &&
+    !text.includes("1st half") &&
+    !text.includes("first half") &&
+    !text.includes("1st quarter") &&
+    !text.includes("first quarter")
+  );
+}
+
+
+function isFullGameTotalOffer(offer) {
+
+  const text =
+    kambiOfferText(offer);
+
+  return (
+    (
+      text.includes("total points") ||
+      text === "total"
+    ) &&
+    !text.includes("team") &&
+    !text.includes("1st half") &&
+    !text.includes("first half") &&
+    !text.includes("1st quarter") &&
+    !text.includes("first quarter")
+  );
+}
+
+
+function isTeamTotalOffer(offer) {
+
+  const text =
+    kambiOfferText(offer);
+
+  return (
+    text.includes("team") &&
+    text.includes("total") &&
+    !text.includes("1st half") &&
+    !text.includes("first half") &&
+    !text.includes("1st quarter") &&
+    !text.includes("first quarter")
+  );
+}
+
+
+function isFirstHalfTotalOffer(offer) {
+
+  const text =
+    kambiOfferText(offer);
+
+  return (
+    text.includes("total") &&
+    (
+      text.includes("1st half") ||
+      text.includes("first half")
+    ) &&
+    !text.includes("team")
+  );
+}
+
+
+function isFirstQuarterTotalOffer(offer) {
+
+  const text =
+    kambiOfferText(offer);
+
+  return (
+    text.includes("total") &&
+    (
+      text.includes("1st quarter") ||
+      text.includes("first quarter")
+    ) &&
+    !text.includes("team")
+  );
+}
+
+
+/* ---------------------------------------------------------
+   TEAM OUTCOME MATCHING
+--------------------------------------------------------- */
+
+function outcomeMatchesTeam(
+  outcome,
+  teamName
+) {
+
+  const wanted =
+    normalizeKambiTeamName(
+      teamName
+    );
+
+  const text =
+    normalizeKambiTeamName(
+      [
+        outcome?.label,
+        outcome?.englishLabel,
+        outcome?.name,
+        outcome?.participant,
+        outcome?.participantName
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+
+
+  return (
+    wanted &&
+    text.includes(wanted)
+  );
+}
+
+
+/* ---------------------------------------------------------
+   POPULATE SPREAD
+--------------------------------------------------------- */
+
+function populateKambiSpread(
+  offers,
+  awayName,
+  homeName
+) {
+
+  const offer =
+    chooseKambiOffer(
+      offers.filter(
+        isFullGameSpreadOffer
+      )
+    );
+
+
+  if (!offer) return;
+
+
+  const awayOutcome =
+    findOutcome(
+      offer,
+      (text, outcome) =>
+        outcomeMatchesTeam(
+          outcome,
+          awayName
+        )
+    );
+
+
+  const homeOutcome =
+    findOutcome(
+      offer,
+      (text, outcome) =>
+        outcomeMatchesTeam(
+          outcome,
+          homeName
+        )
+    );
+
+
+  if (
+    !awayOutcome ||
+    !homeOutcome
+  ) {
+    return;
+  }
+
+
+  const awayLine =
+    outcomeLine(awayOutcome);
+
+  const homeLine =
+    outcomeLine(homeOutcome);
+
+
+  if (
+    !Number.isFinite(awayLine) ||
+    !Number.isFinite(homeLine)
+  ) {
+    return;
+  }
+
+
+  marketBoardLines.spread.awayLine =
+    awayLine;
+
+  marketBoardLines.spread.homeLine =
+    homeLine;
+
+  marketBoardLines.spread.awayPrice =
+    kambiAmericanOdds(
+      awayOutcome
+    );
+
+  marketBoardLines.spread.homePrice =
+    kambiAmericanOdds(
+      homeOutcome
+    );
+}
+
+
+/* ---------------------------------------------------------
+   POPULATE MONEYLINE
+--------------------------------------------------------- */
+
+function populateKambiMoneyline(
+  offers,
+  awayName,
+  homeName
+) {
+
+  const offer =
+    chooseKambiOffer(
+      offers.filter(
+        isMoneylineOffer
+      )
+    );
+
+
+  if (!offer) return;
+
+
+  const awayOutcome =
+    findOutcome(
+      offer,
+      (text, outcome) =>
+        outcomeMatchesTeam(
+          outcome,
+          awayName
+        )
+    );
+
+
+  const homeOutcome =
+    findOutcome(
+      offer,
+      (text, outcome) =>
+        outcomeMatchesTeam(
+          outcome,
+          homeName
+        )
+    );
+
+
+  if (
+    !awayOutcome ||
+    !homeOutcome
+  ) {
+    return;
+  }
+
+
+  marketBoardLines.moneyline.awayPrice =
+    kambiAmericanOdds(
+      awayOutcome
+    );
+
+  marketBoardLines.moneyline.homePrice =
+    kambiAmericanOdds(
+      homeOutcome
+    );
+}
+
+
+/* ---------------------------------------------------------
+   POPULATE GAME TOTAL
+--------------------------------------------------------- */
+
+function populateKambiGameTotal(
+  offers
+) {
+
+  const offer =
+    chooseKambiOffer(
+      offers.filter(
+        isFullGameTotalOffer
+      )
+    );
+
+
+  if (!offer) return;
+
+
+  const over =
+    findOutcome(
+      offer,
+      text =>
+        /\bover\b/.test(text)
+    );
+
+
+  const under =
+    findOutcome(
+      offer,
+      text =>
+        /\bunder\b/.test(text)
+    );
+
+
+  if (!over || !under) {
+    return;
+  }
+
+
+  const overLine =
+    outcomeLine(over);
+
+  const underLine =
+    outcomeLine(under);
+
+
+  const line =
+    Number.isFinite(overLine)
+      ? overLine
+      : underLine;
+
+
+  if (!Number.isFinite(line)) {
+    return;
+  }
+
+
+  marketBoardLines.gameTotal.line =
+    line;
+
+  marketBoardLines.gameTotal.overPrice =
+    kambiAmericanOdds(over);
+
+  marketBoardLines.gameTotal.underPrice =
+    kambiAmericanOdds(under);
+}
+
+
+/* ---------------------------------------------------------
+   POPULATE TEAM TOTALS
+--------------------------------------------------------- */
+
+function populateKambiTeamTotals(
+  offers,
+  awayName,
+  homeName
+) {
+
+  const candidates =
+    offers.filter(
+      isTeamTotalOffer
+    );
+
+
+  function loadTeam(
+    teamName,
+    side
+  ) {
+
+    const matchingOffers =
+      candidates.filter(offer => {
+
+        const offerText =
+          normalizeKambiTeamName(
+            kambiOfferText(offer)
+          );
+
+        const wanted =
+          normalizeKambiTeamName(
+            teamName
+          );
+
+        return (
+          wanted &&
+          offerText.includes(wanted)
+        );
+      });
+
+
+    const offer =
+      chooseKambiOffer(
+        matchingOffers
+      );
+
+
+    if (!offer) return;
+
+
+    const over =
+      findOutcome(
+        offer,
+        text =>
+          /\bover\b/.test(text)
+      );
+
+
+    const under =
+      findOutcome(
+        offer,
+        text =>
+          /\bunder\b/.test(text)
+      );
+
+
+    if (!over || !under) {
+      return;
+    }
+
+
+    const overLine =
+      outcomeLine(over);
+
+    const underLine =
+      outcomeLine(under);
+
+
+    const line =
+      Number.isFinite(overLine)
+        ? overLine
+        : underLine;
+
+
+    if (!Number.isFinite(line)) {
+      return;
+    }
+
+
+    if (side === "AWAY") {
+
+      marketBoardLines.teamTotal.awayLine =
+        line;
+
+      marketBoardLines.teamTotal.awayOverPrice =
+        kambiAmericanOdds(over);
+
+      marketBoardLines.teamTotal.awayUnderPrice =
+        kambiAmericanOdds(under);
+
+    } else {
+
+      marketBoardLines.teamTotal.homeLine =
+        line;
+
+      marketBoardLines.teamTotal.homeOverPrice =
+        kambiAmericanOdds(over);
+
+      marketBoardLines.teamTotal.homeUnderPrice =
+        kambiAmericanOdds(under);
+
+    }
+
+  }
+
+
+  loadTeam(
+    awayName,
+    "AWAY"
+  );
+
+
+  loadTeam(
+    homeName,
+    "HOME"
+  );
+}
+
+
+/* ---------------------------------------------------------
+   POPULATE PERIOD TOTAL
+--------------------------------------------------------- */
+
+function populateKambiPeriodTotal(
+  offers,
+  period
+) {
+
+  const predicate =
+    period === "1H"
+      ? isFirstHalfTotalOffer
+      : isFirstQuarterTotalOffer;
+
+
+  const offer =
+    chooseKambiOffer(
+      offers.filter(
+        predicate
+      )
+    );
+
+
+  if (!offer) return;
+
+
+  const over =
+    findOutcome(
+      offer,
+      text =>
+        /\bover\b/.test(text)
+    );
+
+
+  const under =
+    findOutcome(
+      offer,
+      text =>
+        /\bunder\b/.test(text)
+    );
+
+
+  if (!over || !under) {
+    return;
+  }
+
+
+  const overLine =
+    outcomeLine(over);
+
+  const underLine =
+    outcomeLine(under);
+
+
+  const line =
+    Number.isFinite(overLine)
+      ? overLine
+      : underLine;
+
+
+  if (!Number.isFinite(line)) {
+    return;
+  }
+
+
+  const target =
+    period === "1H"
+      ? marketBoardLines.firstHalf
+      : marketBoardLines.firstQuarter;
+
+
+  target.total =
+    line;
+
+  target.overPrice =
+    kambiAmericanOdds(over);
+
+  target.underPrice =
+    kambiAmericanOdds(under);
+}
+
+
+/* ---------------------------------------------------------
+   LOAD KAMBI FEED
+--------------------------------------------------------- */
+
+async function loadKambiNCAAF(
+  force = false
+) {
+
+  const now =
+    Date.now();
+
+
+  if (
+    !force &&
+    kambiNCAAFData &&
+    now - kambiNCAAFLoadedAt <
+      KAMBI_CACHE_MS
+  ) {
+
+    return true;
+
+  }
+
+
+  try {
+
+    const separator =
+      KAMBI_NCAAF_URL.includes("?")
+        ? "&"
+        : "?";
+
+
+    const response =
+      await fetch(
+        KAMBI_NCAAF_URL +
+        separator +
+        "warroom=" +
+        now,
+        {
+          cache: "no-store"
+        }
+      );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "Kambi HTTP " +
+        response.status
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    if (
+      !data ||
+      typeof data !== "object"
+    ) {
+
+      throw new Error(
+        "Kambi returned no usable NCAAF data."
+      );
+
+    }
+
+
+    kambiNCAAFData =
+      data;
+
+    kambiNCAAFLoadedAt =
+      now;
+
+
+    console.log(
+      "Kambi NCAAF loaded."
+    );
+
+
+    return true;
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "Kambi NCAAF load failed:",
+      error
+    );
+
+
+    kambiNCAAFData =
+      null;
+
+
+    return false;
+
+  }
+}
+
+
+/* ---------------------------------------------------------
+   CONNECT SELECTED MATCHUP TO KAMBI
+--------------------------------------------------------- */
+
+async function connectKambiToMarketBoard(
+  awayName,
+  homeName
+) {
+
+  /*
+     IMPORTANT:
+     updateMatchup already clears old lines.
+
+     This function only fills lines verified
+     for the CURRENT selected matchup.
+  */
+
+
+  const loaded =
+    await loadKambiNCAAF();
+
+
+  if (!loaded) {
+
+    return {
+      connected: false,
+      reason: "KAMBI FEED UNAVAILABLE"
+    };
+
+  }
+
+
+  const event =
+    findKambiEvent(
+      awayName,
+      homeName
+    );
+
+
+  if (!event) {
+
+    return {
+      connected: false,
+      reason:
+        "NO EXACT KAMBI EVENT MATCH"
+    };
+
+  }
+
+
+  const offers =
+    getKambiOffersForEvent(
+      event
+    );
+
+
+  if (!offers.length) {
+
+    return {
+      connected: true,
+      event,
+      offers: 0,
+      reason:
+        "EVENT FOUND — NO MARKET OFFERS"
+    };
+
+  }
+
+
+  populateKambiSpread(
+    offers,
+    awayName,
+    homeName
+  );
+
+
+  populateKambiMoneyline(
+    offers,
+    awayName,
+    homeName
+  );
+
+
+  populateKambiGameTotal(
+    offers
+  );
+
+
+  populateKambiTeamTotals(
+    offers,
+    awayName,
+    homeName
+  );
+
+
+  populateKambiPeriodTotal(
+    offers,
+    "1H"
+  );
+
+
+  populateKambiPeriodTotal(
+    offers,
+    "1Q"
+  );
+
+
+  return {
+    connected: true,
+    event,
+    offers: offers.length,
+    reason: "KAMBI CONNECTED"
+  };
+}
+
+
+/* ---------------------------------------------------------
+   MARKET COUNT
+--------------------------------------------------------- */
+
+function countLoadedKambiMarkets() {
+
+  let count = 0;
+
+
+  if (
+    Number.isFinite(
+      Number(
+        marketBoardLines.spread.awayLine
+      )
+    ) &&
+    Number.isFinite(
+      Number(
+        marketBoardLines.spread.homeLine
+      )
+    )
+  ) {
+    count += 1;
+  }
+
+
+  if (
+    Number.isFinite(
+      Number(
+        marketBoardLines.moneyline.awayPrice
+      )
+    ) &&
+    Number.isFinite(
+      Number(
+        marketBoardLines.moneyline.homePrice
+      )
+    )
+  ) {
+    count += 1;
+  }
+
+
+  if (
+    Number.isFinite(
+      Number(
+        marketBoardLines.gameTotal.line
+      )
+    )
+  ) {
+    count += 1;
+  }
+
+
+  if (
+    Number.isFinite(
+      Number(
+        marketBoardLines.teamTotal.awayLine
+      )
+    ) ||
+    Number.isFinite(
+      Number(
+        marketBoardLines.teamTotal.homeLine
+      )
+    )
+  ) {
+    count += 1;
+  }
+
+
+  if (
+    Number.isFinite(
+      Number(
+        marketBoardLines.firstHalf.total
+      )
+    )
+  ) {
+    count += 1;
+  }
+
+
+  if (
+    Number.isFinite(
+      Number(
+        marketBoardLines.firstQuarter.total
+      )
+    )
+  ) {
+    count += 1;
+  }
+
+
+  return count;
+}
 /* =========================================================
    UPDATE MATCHUP
 ========================================================= */
 
-function updateMatchup() {
+async function updateMatchup() {
 
   removeGreen();
 
@@ -4782,12 +6417,6 @@ function updateMatchup() {
   );
 
 
-  /*
-     Green on the Team Comparison board
-     remains controlled by the existing
-     evidence thresholds.
-  */
-
   if (
     awayTeam &&
     homeTeam
@@ -4857,18 +6486,46 @@ function updateMatchup() {
 
 
   /*
-     SIX-MARKET PROVE IT CONTROLLER
+     KAMBI MUST LOAD AFTER:
 
-     Spread
-     Moneyline
-     Game Total
-     Team Total
-     1H Total
-     1Q Total
+     clearMarketBoardLines()
 
-     This controller analyzes only verified
-     market lines already present in
-     marketBoardLines.
+     AND BEFORE:
+
+     runMarketBoardAnalysis()
+
+     That prevents an old matchup's sportsbook
+     lines from surviving a team change.
+  */
+
+  const marketStatus =
+    document.getElementById(
+      "marketBoardStatus"
+    );
+
+
+  if (marketStatus) {
+
+    marketStatus.textContent =
+      "Checking Kambi for verified NCAAF markets...";
+
+  }
+
+
+  const kambiResult =
+    await connectKambiToMarketBoard(
+      awayName,
+      homeName
+    );
+
+
+  /*
+     Now run the existing PROVE IT board.
+
+     Whatever Kambi actually supplied is analyzed.
+
+     Whatever Kambi did NOT supply remains
+     NO MARKET.
   */
 
   runMarketBoardAnalysis(
@@ -4881,10 +6538,38 @@ function updateMatchup() {
   );
 
 
+  const loadedMarketCount =
+    countLoadedKambiMarkets();
+
+
+  /*
+     Do not overwrite the PROVE IT verdict
+     when markets were successfully loaded.
+
+     Only add a source warning when Kambi
+     could not connect.
+  */
+
+  if (
+    !kambiResult.connected &&
+    marketStatus
+  ) {
+
+    marketStatus.textContent =
+      kambiResult.reason +
+      " — sportsbook markets remain NO MARKET.";
+
+  }
+
+
   document
     .getElementById("status")
     .textContent =
-      "EXPERIMENTAL whole-picture projection: scoring history + opponent defense + location/sample protection + PPA + success rate + explosiveness + PPO + SOS.";
+      "EXPERIMENTAL whole-picture projection: scoring history + opponent defense + location/sample protection + PPA + success rate + explosiveness + PPO + SOS. " +
+      "Kambi verified markets loaded: " +
+      loadedMarketCount +
+      "/6.";
+
 }
 
 
