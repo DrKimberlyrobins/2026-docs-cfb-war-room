@@ -232,7 +232,76 @@ select {
   font-weight: bold;
 }
 
-/* MOBILE */
+/* =========================================================
+   PROVE IT MARKET BOARD
+   ========================================================= */
+
+.market-board {
+  margin-top: 30px;
+  background: #101d2c;
+  border: 2px solid #f5c542;
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.market-board h2 {
+  text-align: center;
+  margin-top: 0;
+  color: #f5c542;
+}
+
+.market-board-table {
+  display: grid;
+  grid-template-columns: .55fr 1.15fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.market-board-header {
+  background: #182536;
+  color: #f5c542;
+  border-radius: 9px;
+  padding: 13px 8px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.market-board-cell {
+  background: #07111f;
+  border: 1px solid #23364d;
+  border-radius: 9px;
+  padding: 15px 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.market-name {
+  color: #f5c542;
+}
+
+.market-rank {
+  color: #aab6c5;
+  font-size: 18px;
+}
+
+.market-verdict {
+  color: #aab6c5;
+}
+
+@media (max-width: 850px) {
+
+  .market-board {
+    padding: 14px 8px;
+    overflow-x: auto;
+  }
+
+  .market-board-table {
+    min-width: 760px;
+  }
+
+}
+  
+  /* MOBILE */
 
 @media (max-width: 850px) {
 
@@ -536,6 +605,89 @@ select {
 
   </div>
 
+   <!-- =====================================================
+       PROVE IT MARKET BOARD
+       ===================================================== -->
+
+  <div class="market-board" id="marketBoard">
+
+    <h2>PROVE IT MARKET BOARD</h2>
+
+    <div class="engine-subtitle">
+      Projection vs. Market. Green must be earned.
+    </div>
+
+    <div class="market-board-table">
+
+      <div class="market-board-header">RANK</div>
+      <div class="market-board-header">MARKET</div>
+      <div class="market-board-header">BOOK LINE</div>
+      <div class="market-board-header">WAR ROOM</div>
+      <div class="market-board-header">EDGE</div>
+      <div class="market-board-header">VERDICT</div>
+
+      <!-- SPREAD -->
+      <div class="market-board-cell market-rank" id="spreadRank">—</div>
+      <div class="market-board-cell market-name">SPREAD</div>
+      <div class="market-board-cell" id="spreadBook">—</div>
+      <div class="market-board-cell" id="spreadProjection">—</div>
+      <div class="market-board-cell" id="spreadEdge">—</div>
+      <div class="market-board-cell market-verdict" id="spreadVerdict">WAITING</div>
+
+      <!-- MONEYLINE -->
+      <div class="market-board-cell market-rank" id="moneylineRank">—</div>
+      <div class="market-board-cell market-name">MONEYLINE</div>
+      <div class="market-board-cell" id="moneylineBook">—</div>
+      <div class="market-board-cell" id="moneylineProjection">—</div>
+      <div class="market-board-cell" id="moneylineEdge">—</div>
+      <div class="market-board-cell market-verdict" id="moneylineVerdict">WAITING</div>
+
+      <!-- GAME TOTAL -->
+      <div class="market-board-cell market-rank" id="gameTotalRank">—</div>
+      <div class="market-board-cell market-name">GAME TOTAL</div>
+      <div class="market-board-cell" id="gameTotalBook">—</div>
+      <div class="market-board-cell" id="gameTotalProjection">—</div>
+      <div class="market-board-cell" id="gameTotalEdge">—</div>
+      <div class="market-board-cell market-verdict" id="gameTotalVerdict">WAITING</div>
+
+      <!-- TEAM TOTAL -->
+      <div class="market-board-cell market-rank" id="teamTotalRank">—</div>
+      <div class="market-board-cell market-name">TEAM TOTAL</div>
+      <div class="market-board-cell" id="teamTotalBook">—</div>
+      <div class="market-board-cell" id="teamTotalProjection">—</div>
+      <div class="market-board-cell" id="teamTotalEdge">—</div>
+      <div class="market-board-cell market-verdict" id="teamTotalVerdict">WAITING</div>
+
+      <!-- FIRST HALF -->
+      <div class="market-board-cell market-rank" id="firstHalfRank">—</div>
+      <div class="market-board-cell market-name">1H</div>
+      <div class="market-board-cell" id="firstHalfBook">—</div>
+      <div class="market-board-cell" id="firstHalfProjection">—</div>
+      <div class="market-board-cell" id="firstHalfEdge">—</div>
+      <div class="market-board-cell market-verdict" id="firstHalfVerdict">WAITING</div>
+
+      <!-- FIRST QUARTER -->
+      <div class="market-board-cell market-rank" id="firstQuarterRank">—</div>
+      <div class="market-board-cell market-name">1Q</div>
+      <div class="market-board-cell" id="firstQuarterBook">—</div>
+      <div class="market-board-cell" id="firstQuarterProjection">—</div>
+      <div class="market-board-cell" id="firstQuarterEdge">—</div>
+      <div class="market-board-cell market-verdict" id="firstQuarterVerdict">WAITING</div>
+
+    </div>
+
+    <div class="pass-rule">
+      PROVE IT RULE: A market does not qualify because one number looks good.
+      Projection, market edge, and supporting evidence must agree.
+      Conflicts stay PASS.
+    </div>
+
+    <div class="status" id="marketBoardStatus">
+      Waiting for verified market lines.
+    </div>
+
+  </div> 
+
 </div>
 
 <script>
@@ -814,6 +966,192 @@ function applyMetricGreens(
   */
 }
 
+/* =========================================================
+   PROVE IT EVIDENCE PROFILE
+
+   This counts the same meaningful matchup advantages used
+   by the Team Comparison board.
+
+   It does NOT make a betting decision.
+   ========================================================= */
+
+function buildEvidenceProfile(
+  awayTeam,
+  homeTeam,
+  awaySOS,
+  homeSOS
+) {
+
+  const evidence = {
+    away: 0,
+    home: 0,
+    neutral: 0,
+    details: []
+  };
+
+
+  function higherBetter(
+    label,
+    awayValue,
+    homeValue,
+    threshold
+  ) {
+
+    const away = Number(awayValue);
+    const home = Number(homeValue);
+
+    if (
+      !Number.isFinite(away) ||
+      !Number.isFinite(home)
+    ) {
+      return;
+    }
+
+    const difference =
+      away - home;
+
+    if (difference >= threshold) {
+
+      evidence.away += 1;
+      evidence.details.push(
+        label + ": AWAY"
+      );
+
+    } else if (difference <= -threshold) {
+
+      evidence.home += 1;
+      evidence.details.push(
+        label + ": HOME"
+      );
+
+    } else {
+
+      evidence.neutral += 1;
+      evidence.details.push(
+        label + ": NEUTRAL"
+      );
+
+    }
+
+  }
+
+
+  function lowerBetter(
+    label,
+    awayValue,
+    homeValue,
+    threshold
+  ) {
+
+    const away = Number(awayValue);
+    const home = Number(homeValue);
+
+    if (
+      !Number.isFinite(away) ||
+      !Number.isFinite(home)
+    ) {
+      return;
+    }
+
+    const difference =
+      away - home;
+
+    if (difference <= -threshold) {
+
+      evidence.away += 1;
+      evidence.details.push(
+        label + ": AWAY"
+      );
+
+    } else if (difference >= threshold) {
+
+      evidence.home += 1;
+      evidence.details.push(
+        label + ": HOME"
+      );
+
+    } else {
+
+      evidence.neutral += 1;
+      evidence.details.push(
+        label + ": NEUTRAL"
+      );
+
+    }
+
+  }
+
+
+  higherBetter(
+    "Offensive PPA",
+    awayTeam?.offense?.ppa,
+    homeTeam?.offense?.ppa,
+    0.10
+  );
+
+  lowerBetter(
+    "Defensive PPA",
+    awayTeam?.defense?.ppa,
+    homeTeam?.defense?.ppa,
+    0.05
+  );
+
+  higherBetter(
+    "Success Rate",
+    awayTeam?.offense?.successRate,
+    homeTeam?.offense?.successRate,
+    0.05
+  );
+
+  higherBetter(
+    "Explosiveness",
+    awayTeam?.offense?.explosiveness,
+    homeTeam?.offense?.explosiveness,
+    0.15
+  );
+
+  higherBetter(
+    "Points Per Opportunity",
+    awayTeam?.offense?.pointsPerOpportunity,
+    homeTeam?.offense?.pointsPerOpportunity,
+    0.75
+  );
+
+  lowerBetter(
+    "Defensive Success Rate",
+    awayTeam?.defense?.successRate,
+    homeTeam?.defense?.successRate,
+    0.05
+  );
+
+  lowerBetter(
+    "Defensive Explosiveness",
+    awayTeam?.defense?.explosiveness,
+    homeTeam?.defense?.explosiveness,
+    0.15
+  );
+
+
+  /*
+     SOS is context only.
+
+     We save the ranks so the qualification layer can
+     inspect them, but SOS does NOT earn an evidence point.
+  */
+
+  evidence.awaySOS =
+    Number(
+      awaySOS?.resumeRanks?.strengthOfSchedule
+    );
+
+  evidence.homeSOS =
+    Number(
+      homeSOS?.resumeRanks?.strengthOfSchedule
+    );
+
+
+  return evidence;
+}  
 
 /* =========================================================
    TEAM COMPARISON
@@ -1354,7 +1692,868 @@ function projectTeamScore(
    PROJECTION DISPLAY
 ========================================================= */
 
-function clearPredictions() {
+/* =========================================================
+   PROVE IT MARKET BOARD STATE
+
+   These values come directly from the existing scoring
+   engine. They are projections only — NOT market edges.
+   ========================================================= */
+
+const marketBoardProjection = {
+
+  q1: {
+    away: null,
+    home: null,
+    total: null,
+    margin: null
+  },
+
+  h1: {
+    away: null,
+    home: null,
+    total: null,
+    margin: null
+  },
+
+  full: {
+    away: null,
+    home: null,
+    total: null,
+    margin: null
+  }
+
+};
+
+
+function clearMarketBoardProjection() {
+
+  Object.keys(marketBoardProjection)
+    .forEach(period => {
+
+      marketBoardProjection[period].away = null;
+      marketBoardProjection[period].home = null;
+      marketBoardProjection[period].total = null;
+      marketBoardProjection[period].margin = null;
+
+    });
+
+
+  [
+    "spreadProjection",
+    "moneylineProjection",
+    "gameTotalProjection",
+    "teamTotalProjection",
+    "firstHalfProjection",
+    "firstQuarterProjection"
+  ].forEach(id => {
+
+    const element =
+      document.getElementById(id);
+
+    if (element) {
+      element.textContent = "—";
+    }
+
+  });
+
+}
+  /* =========================================================
+   VERIFIED MARKET STATE
+
+   Market values stay null until supplied by a verified
+   market source. The War Room must NEVER manufacture a line.
+   ========================================================= */
+
+const marketBoardLines = {
+
+  spread: {
+    awayLine: null,
+    homeLine: null,
+    awayPrice: null,
+    homePrice: null
+  },
+
+  moneyline: {
+    awayPrice: null,
+    homePrice: null
+  },
+
+  gameTotal: {
+    line: null,
+    overPrice: null,
+    underPrice: null
+  },
+
+  teamTotal: {
+    awayLine: null,
+    homeLine: null,
+    awayOverPrice: null,
+    awayUnderPrice: null,
+    homeOverPrice: null,
+    homeUnderPrice: null
+  },
+
+  firstHalf: {
+    spreadAway: null,
+    spreadHome: null,
+    total: null,
+    overPrice: null,
+    underPrice: null
+  },
+
+  firstQuarter: {
+    spreadAway: null,
+    spreadHome: null,
+    total: null,
+    overPrice: null,
+    underPrice: null
+  }
+
+};
+function clearMarketBoardLines() {
+
+  marketBoardLines.spread.awayLine = null;
+  marketBoardLines.spread.homeLine = null;
+  marketBoardLines.spread.awayPrice = null;
+  marketBoardLines.spread.homePrice = null;
+
+  marketBoardLines.moneyline.awayPrice = null;
+  marketBoardLines.moneyline.homePrice = null;
+
+  marketBoardLines.gameTotal.line = null;
+  marketBoardLines.gameTotal.overPrice = null;
+  marketBoardLines.gameTotal.underPrice = null;
+
+  marketBoardLines.teamTotal.awayLine = null;
+  marketBoardLines.teamTotal.homeLine = null;
+  marketBoardLines.teamTotal.awayOverPrice = null;
+  marketBoardLines.teamTotal.awayUnderPrice = null;
+  marketBoardLines.teamTotal.homeOverPrice = null;
+  marketBoardLines.teamTotal.homeUnderPrice = null;
+
+  marketBoardLines.firstHalf.spreadAway = null;
+  marketBoardLines.firstHalf.spreadHome = null;
+  marketBoardLines.firstHalf.total = null;
+  marketBoardLines.firstHalf.overPrice = null;
+  marketBoardLines.firstHalf.underPrice = null;
+
+  marketBoardLines.firstQuarter.spreadAway = null;
+  marketBoardLines.firstQuarter.spreadHome = null;
+  marketBoardLines.firstQuarter.total = null;
+  marketBoardLines.firstQuarter.overPrice = null;
+  marketBoardLines.firstQuarter.underPrice = null;
+
+
+  [
+    "spreadBook",
+    "moneylineBook",
+    "gameTotalBook",
+    "teamTotalBook",
+    "firstHalfBook",
+    "firstQuarterBook",
+
+    "spreadEdge",
+    "moneylineEdge",
+    "gameTotalEdge",
+    "teamTotalEdge",
+    "firstHalfEdge",
+    "firstQuarterEdge",
+
+    "spreadRank",
+    "moneylineRank",
+    "gameTotalRank",
+    "teamTotalRank",
+    "firstHalfRank",
+    "firstQuarterRank"
+  ].forEach(id => {
+
+    const element =
+      document.getElementById(id);
+
+    if (element) {
+      element.textContent = "—";
+    }
+
+  });
+
+
+  [
+    "spreadVerdict",
+    "moneylineVerdict",
+    "gameTotalVerdict",
+    "teamTotalVerdict",
+    "firstHalfVerdict",
+    "firstQuarterVerdict"
+  ].forEach(id => {
+
+    const element =
+      document.getElementById(id);
+
+    if (element) {
+      element.textContent = "WAITING";
+      element.classList.remove("green");
+    }
+
+  });
+
+
+  const status =
+    document.getElementById("marketBoardStatus");
+
+  if (status) {
+    status.textContent =
+      "Waiting for verified market lines.";
+  }
+
+}
+  
+  /* =========================================================
+   PROVE IT EDGE CALCULATOR
+
+   An edge can exist ONLY when both:
+   1. War Room projection exists.
+   2. Verified market line exists.
+
+   No verified line = no edge.
+   ========================================================= */
+/* =========================================================
+   PROVE IT QUALIFICATION GATE
+
+   IMPORTANT:
+   Ranking and qualification are separate.
+
+   A market may rank highly compared with the other markets
+   and STILL remain PASS.
+
+   Missing market data can NEVER qualify.
+   ========================================================= */
+
+function createMarketVerdict({
+  hasMarket = false,
+  edge = null,
+  evidenceFor = 0,
+  evidenceAgainst = 0,
+  conflicts = 0
+} = {}) {
+
+  const result = {
+    status: "PASS",
+    qualified: false,
+    lean: false,
+    edge: Number.isFinite(edge)
+      ? edge
+      : null,
+    evidenceFor,
+    evidenceAgainst,
+    conflicts,
+    reason: ""
+  };
+
+
+  /*
+     GATE 1:
+     No verified sportsbook line = stop.
+  */
+
+  if (!hasMarket) {
+
+    result.status = "NO MARKET";
+    result.reason =
+      "No verified market line.";
+
+    return result;
+  }
+
+
+  /*
+     GATE 2:
+     No measurable projection edge = stop.
+  */
+
+  if (!Number.isFinite(edge)) {
+
+    result.status = "PASS";
+    result.reason =
+      "No measurable projection edge.";
+
+    return result;
+  }
+
+
+  /*
+     GATE 3:
+     Conflicting evidence prevents automatic qualification.
+
+     We are deliberately NOT setting final numerical
+     qualification thresholds here yet.
+  */
+
+  if (
+    conflicts > 0 ||
+    evidenceAgainst > evidenceFor
+  ) {
+
+    result.status = "PASS";
+    result.reason =
+      "Supporting evidence conflicts.";
+
+    return result;
+  }
+
+
+  /*
+     At this stage the market is only a LEAN.
+
+     QUALIFIED status will be awarded later only after
+     market-specific thresholds have been validated.
+  */
+
+  if (
+    Math.abs(edge) > 0 &&
+    evidenceFor > evidenceAgainst
+  ) {
+
+    result.status = "LEAN";
+    result.lean = true;
+    result.reason =
+      "Edge and evidence agree, but qualification threshold has not been proven.";
+
+    return result;
+  }
+
+
+  result.status = "PASS";
+  result.reason =
+    "Evidence is not strong enough.";
+
+  return result;
+}
+
+/* =========================================================
+   SIX-MARKET ANALYSIS STATE
+
+   Keeps each market's analysis separate.
+
+   Ranking does NOT equal qualification.
+   ========================================================= */
+
+const marketAnalysis = {
+
+  spread: {
+    edge: null,
+    side: null,
+    verdict: "NO MARKET",
+    score: null
+  },
+
+  moneyline: {
+    edge: null,
+    side: null,
+    verdict: "NO MARKET",
+    score: null
+  },
+
+  gameTotal: {
+    edge: null,
+    side: null,
+    verdict: "NO MARKET",
+    score: null
+  },
+
+  teamTotal: {
+    edge: null,
+    side: null,
+    verdict: "NO MARKET",
+    score: null
+  },
+
+  firstHalf: {
+    edge: null,
+    side: null,
+    verdict: "NO MARKET",
+    score: null
+  },
+
+  firstQuarter: {
+    edge: null,
+    side: null,
+    verdict: "NO MARKET",
+    score: null
+  }
+
+};
+
+
+function resetMarketAnalysis() {
+
+  Object.values(marketAnalysis)
+    .forEach(market => {
+
+      market.edge = null;
+      market.side = null;
+      market.verdict = "NO MARKET";
+      market.score = null;
+
+    });
+
+}
+/* =========================================================
+   SPREAD MARKET ANALYSIS
+
+   Compares the verified spread with the War Room's
+   projected full-game score difference.
+
+   This can identify disagreement with the market.
+   It cannot automatically create a QUALIFIED play.
+   ========================================================= */
+
+function analyzeSpreadMarket(
+  awayTeam,
+  homeTeam,
+  awaySOS,
+  homeSOS
+) {
+
+  const analysis =
+    marketAnalysis.spread;
+
+  analysis.edge = null;
+  analysis.side = null;
+  analysis.verdict = "NO MARKET";
+  analysis.score = null;
+
+
+  const awayLine =
+    Number(
+      marketBoardLines.spread.awayLine
+    );
+
+  const homeLine =
+    Number(
+      marketBoardLines.spread.homeLine
+    );
+
+
+  const awayProjection =
+    Number(
+      marketBoardProjection.full.away
+    );
+
+  const homeProjection =
+    Number(
+      marketBoardProjection.full.home
+    );
+
+
+  if (
+    !Number.isFinite(awayLine) ||
+    !Number.isFinite(homeLine) ||
+    !Number.isFinite(awayProjection) ||
+    !Number.isFinite(homeProjection)
+  ) {
+
+    return analysis;
+
+  }
+
+  function displaySpreadAnalysis(
+  awayName,
+  homeName,
+  awayTeam,
+  homeTeam,
+  awaySOS,
+  homeSOS
+) {
+
+  const bookElement =
+    document.getElementById("spreadBook");
+
+  const projectionElement =
+    document.getElementById("spreadProjection");
+
+  const edgeElement =
+    document.getElementById("spreadEdge");
+
+  const verdictElement =
+    document.getElementById("spreadVerdict");
+
+
+  if (
+    !bookElement ||
+    !projectionElement ||
+    !edgeElement ||
+    !verdictElement
+  ) {
+    return;
+  }
+
+
+  const awayLine =
+    Number(
+      marketBoardLines.spread.awayLine
+    );
+
+  const homeLine =
+    Number(
+      marketBoardLines.spread.homeLine
+    );
+
+
+  /*
+     No verified spread = stop.
+
+     Never manufacture or assume a sportsbook line.
+  */
+
+  if (
+    !Number.isFinite(awayLine) ||
+    !Number.isFinite(homeLine)
+  ) {
+
+    bookElement.textContent = "—";
+    edgeElement.textContent = "—";
+    verdictElement.textContent = "NO MARKET";
+    verdictElement.classList.remove("green");
+
+    return;
+  }
+
+
+  bookElement.textContent =
+    awayName +
+    " " +
+    (awayLine > 0 ? "+" : "") +
+    awayLine +
+    " | " +
+    homeName +
+    " " +
+    (homeLine > 0 ? "+" : "") +
+    homeLine;
+
+
+  const analysis =
+    analyzeSpreadMarket(
+      awayTeam,
+      homeTeam,
+      awaySOS,
+      homeSOS
+    );
+
+
+  if (analysis.side === "AWAY") {
+
+    edgeElement.textContent =
+      awayName +
+      " " +
+      formatEdge(analysis.edge);
+
+  } else if (analysis.side === "HOME") {
+
+    edgeElement.textContent =
+      homeName +
+      " " +
+      formatEdge(analysis.edge);
+
+  } else {
+
+    edgeElement.textContent = "—";
+
+  }
+
+
+  verdictElement.textContent =
+    analysis.verdict;
+
+
+  /*
+     PROVE IT:
+     LEAN and PASS do NOT receive green.
+  */
+
+  verdictElement.classList.remove("green");
+
+}
+
+
+  /*
+     Projected score difference from AWAY perspective.
+
+     Positive = away projected to win.
+     Negative = home projected to win.
+  */
+
+  const projectedDifference =
+    awayProjection - homeProjection;
+
+
+  /*
+     ATS cushion:
+
+     projected score difference + spread.
+
+     Positive means that side projects to cover.
+  */
+
+  const awayCoverMargin =
+    projectedDifference + awayLine;
+
+  const homeCoverMargin =
+    -projectedDifference + homeLine;
+
+
+  let preferredSide;
+  let preferredEdge;
+
+
+  if (awayCoverMargin > homeCoverMargin) {
+
+    preferredSide = "AWAY";
+    preferredEdge = awayCoverMargin;
+
+  } else if (homeCoverMargin > awayCoverMargin) {
+
+    preferredSide = "HOME";
+    preferredEdge = homeCoverMargin;
+
+  } else {
+
+    preferredSide = null;
+    preferredEdge = 0;
+
+  }
+
+
+  const evidence =
+    buildEvidenceProfile(
+      awayTeam,
+      homeTeam,
+      awaySOS,
+      homeSOS
+    );
+
+
+  let evidenceFor = 0;
+  let evidenceAgainst = 0;
+
+
+  if (preferredSide === "AWAY") {
+
+    evidenceFor = evidence.away;
+    evidenceAgainst = evidence.home;
+
+  } else if (preferredSide === "HOME") {
+
+    evidenceFor = evidence.home;
+    evidenceAgainst = evidence.away;
+
+  }
+
+
+  const verdict =
+    createMarketVerdict({
+      hasMarket: true,
+      edge: preferredEdge,
+      evidenceFor,
+      evidenceAgainst,
+      conflicts:
+        evidenceAgainst > evidenceFor
+          ? 1
+          : 0
+    });
+
+
+  analysis.edge =
+    preferredEdge;
+
+  analysis.side =
+    preferredSide;
+
+  analysis.verdict =
+    verdict.status;
+
+  analysis.score =
+    Math.abs(preferredEdge);
+
+
+  return analysis;
+}
+  
+function calculateMarketEdge(
+  projection,
+  marketLine
+) {
+
+  /*
+     PROVE IT:
+     Missing market data must NEVER become zero.
+  */
+
+  if (
+    projection === null ||
+    projection === undefined ||
+    marketLine === null ||
+    marketLine === undefined ||
+    String(marketLine).trim() === ""
+  ) {
+
+    return null;
+
+  }
+
+
+  const projected =
+    Number(projection);
+
+  const line =
+    Number(marketLine);
+
+
+  if (
+    !Number.isFinite(projected) ||
+    !Number.isFinite(line)
+  ) {
+
+    return null;
+
+  }
+
+
+  return projected - line;
+}
+
+
+function formatEdge(value) {
+
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+
+  const rounded =
+    Number(value.toFixed(1));
+
+  if (rounded > 0) {
+    return "+" + rounded.toFixed(1);
+  }
+
+  return rounded.toFixed(1);
+}
+  function updateMarketBoardProjectionDisplay() {
+
+  const q1 =
+    marketBoardProjection.q1;
+
+  const h1 =
+    marketBoardProjection.h1;
+
+  const full =
+    marketBoardProjection.full;
+
+
+  const spreadProjection =
+    document.getElementById("spreadProjection");
+
+  const moneylineProjection =
+    document.getElementById("moneylineProjection");
+
+  const gameTotalProjection =
+    document.getElementById("gameTotalProjection");
+
+  const teamTotalProjection =
+    document.getElementById("teamTotalProjection");
+
+  const firstHalfProjection =
+    document.getElementById("firstHalfProjection");
+
+  const firstQuarterProjection =
+    document.getElementById("firstQuarterProjection");
+
+
+  if (spreadProjection) {
+
+    spreadProjection.textContent =
+      Number.isFinite(full.margin)
+        ? formatProjection(full.margin) + " pt margin"
+        : "—";
+
+  }
+
+
+  if (moneylineProjection) {
+
+    if (
+      Number.isFinite(full.away) &&
+      Number.isFinite(full.home)
+    ) {
+
+      moneylineProjection.textContent =
+        full.away > full.home
+          ? "AWAY"
+          : full.home > full.away
+            ? "HOME"
+            : "EVEN";
+
+    } else {
+
+      moneylineProjection.textContent = "—";
+
+    }
+
+  }
+
+
+  if (gameTotalProjection) {
+
+    gameTotalProjection.textContent =
+      Number.isFinite(full.total)
+        ? formatProjection(full.total)
+        : "—";
+
+  }
+
+
+  if (teamTotalProjection) {
+
+    if (
+      Number.isFinite(full.away) &&
+      Number.isFinite(full.home)
+    ) {
+
+      teamTotalProjection.textContent =
+        "A " +
+        formatProjection(full.away) +
+        " | H " +
+        formatProjection(full.home);
+
+    } else {
+
+      teamTotalProjection.textContent = "—";
+
+    }
+
+  }
+
+
+  if (firstHalfProjection) {
+
+    firstHalfProjection.textContent =
+      Number.isFinite(h1.total)
+        ? formatProjection(h1.total) + " total"
+        : "—";
+
+  }
+
+
+  if (firstQuarterProjection) {
+
+    firstQuarterProjection.textContent =
+      Number.isFinite(q1.total)
+        ? formatProjection(q1.total) + " total"
+        : "—";
+
+  }
+
+}
+  function clearPredictions() {
 
   [
     "away1Q",
@@ -1401,6 +2600,29 @@ function displayPeriodProjection(
     Math.abs(
       awayScore - homeScore
     );
+  
+    /*
+     Feed the existing scoring projection into the
+     PROVE IT Market Board state.
+
+     This does NOT qualify a market.
+  */
+
+  if (marketBoardProjection[period]) {
+
+    marketBoardProjection[period].away =
+      awayScore;
+
+    marketBoardProjection[period].home =
+      homeScore;
+
+    marketBoardProjection[period].total =
+      total;
+
+    marketBoardProjection[period].margin =
+      margin;
+
+  }
 
 
   let awayId;
@@ -1522,7 +2744,10 @@ function runScoringEngine(
 
   });
 
-
+  if (complete) {
+    updateMarketBoardProjectionDisplay();
+  }
+  
   return complete;
 }
 
@@ -1570,6 +2795,9 @@ function updateMatchup() {
 
   removeGreen();
   clearPredictions();
+  clearMarketBoardProjection();
+  clearMarketBoardLines();
+  resetMarketAnalysis();
 
 
   const awayName =
@@ -1681,6 +2909,14 @@ function updateMatchup() {
     return;
   }
 
+    displaySpreadAnalysis(
+    awayName,
+    homeName,
+    awayTeam,
+    homeTeam,
+    awaySOS,
+    homeSOS
+  );
 
   document.getElementById("status").textContent =
     "EXPERIMENTAL whole-picture projection: scoring history + opponent defense + location/sample protection + PPA + success rate + explosiveness + PPO + SOS.";
