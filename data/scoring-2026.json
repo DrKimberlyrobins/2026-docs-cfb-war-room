@@ -15893,15 +15893,15 @@
   },
   {
     "team": "Southern Miss",
-    "games": 4,
-    "avg1QScored": 2.5,
-    "avg1QAllowed": 10.25,
-    "avg1HScored": 12.25,
-    "avg1HAllowed": 17.75,
-    "avgFullScored": 24.5,
-    "avgFullAllowed": 29.5,
+    "games": 5,
+    "avg1QScored": 2,
+    "avg1QAllowed": 11.6,
+    "avg1HScored": 11.2,
+    "avg1HAllowed": 20.4,
+    "avgFullScored": 26.4,
+    "avgFullAllowed": 34.6,
     "homeGames": 2,
-    "awayGames": 2,
+    "awayGames": 3,
     "home": {
       "games": 2,
       "avg1QScored": 5,
@@ -15912,13 +15912,13 @@
       "avgFullAllowed": 25.5
     },
     "away": {
-      "games": 2,
+      "games": 3,
       "avg1QScored": 0,
-      "avg1QAllowed": 12,
-      "avg1HScored": 11,
-      "avg1HAllowed": 20.5,
-      "avgFullScored": 14.5,
-      "avgFullAllowed": 33.5
+      "avg1QAllowed": 13.666666666666666,
+      "avg1HScored": 9.666666666666666,
+      "avg1HAllowed": 24,
+      "avgFullScored": 21,
+      "avgFullAllowed": 40.666666666666664
     }
   },
   {
@@ -17383,23 +17383,23 @@
   },
   {
     "team": "Troy",
-    "games": 4,
-    "avg1QScored": 9.5,
-    "avg1QAllowed": 5.25,
-    "avg1HScored": 18,
-    "avg1HAllowed": 13,
-    "avgFullScored": 21.25,
-    "avgFullAllowed": 21.5,
-    "homeGames": 2,
+    "games": 5,
+    "avg1QScored": 11,
+    "avg1QAllowed": 4.2,
+    "avg1HScored": 20.6,
+    "avg1HAllowed": 11.8,
+    "avgFullScored": 28,
+    "avgFullAllowed": 24,
+    "homeGames": 3,
     "awayGames": 2,
     "home": {
-      "games": 2,
-      "avg1QScored": 10.5,
-      "avg1QAllowed": 7,
-      "avg1HScored": 22.5,
-      "avg1HAllowed": 10.5,
-      "avgFullScored": 29,
-      "avgFullAllowed": 19
+      "games": 3,
+      "avg1QScored": 12.666666666666666,
+      "avg1QAllowed": 4.666666666666667,
+      "avg1HScored": 25.333333333333332,
+      "avg1HAllowed": 9.333333333333334,
+      "avgFullScored": 37.666666666666664,
+      "avgFullAllowed": 24
     },
     "away": {
       "games": 2,
