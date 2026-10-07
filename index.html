@@ -5642,7 +5642,1122 @@ document
    START
 ========================================================= */
 
+/* =========================================================
+   PROVE IT — SAVE TO RECORDS
+========================================================= */
+
+const COLLEGE_RECORDS_URL =
+  "https://script.google.com/macros/s/AKfycbzGMA77vD-Cs1bGNv5sbgKmvK1aM6heQqgqPwGpmz9SZ1DUE52xnjXxTNNehAqnk7pN/exec";
+
+let currentRecordsEventId = null;
+let currentRecordsMatchupKey = null;
+let currentRecordsSavedKey = null;
+
+
+/* =========================================================
+   SMALL RECORD HELPERS
+========================================================= */
+
+function recordsText(id) {
+
+  const element =
+    document.getElementById(id);
+
+  return element
+    ? element.textContent.trim()
+    : "";
+
+}
+
+
+function recordsNumber(value) {
+
+  const number =
+    Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : "";
+
+}
+
+
+function recordsReason(verdict) {
+
+  const text =
+    String(verdict || "");
+
+  const pieces =
+    text.split("—");
+
+  return pieces.length > 1
+    ? pieces.slice(1).join("—").trim()
+    : text.trim();
+
+}
+
+
+function recordsMarketSide(
+  marketKey,
+  awayName,
+  homeName
+) {
+
+  const analysis =
+    marketBoardAnalysis[marketKey];
+
+  if (!analysis) {
+    return "";
+  }
+
+
+  /* SPREAD */
+
+  if (marketKey === "spread") {
+
+    if (
+      analysis.preferredTeam &&
+      Number.isFinite(
+        Number(
+          analysis.preferredLine
+        )
+      )
+    ) {
+
+      return (
+        analysis.preferredTeam +
+        " " +
+        formatMarketLine(
+          Number(
+            analysis.preferredLine
+          )
+        )
+      );
+
+    }
+
+    return "";
+
+  }
+
+
+  /* MONEYLINE */
+
+  if (marketKey === "moneyline") {
+
+    const awayProjection =
+      Number(
+        marketBoardProjection.full.away
+      );
+
+    const homeProjection =
+      Number(
+        marketBoardProjection.full.home
+      );
+
+    if (
+      !Number.isFinite(awayProjection) ||
+      !Number.isFinite(homeProjection)
+    ) {
+      return "";
+    }
+
+    return awayProjection > homeProjection
+      ? awayName + " ML"
+      : homeName + " ML";
+
+  }
+
+
+  /* GAME TOTAL */
+
+  if (marketKey === "gameTotal") {
+
+    const line =
+      Number(
+        marketBoardLines.gameTotal.line
+      );
+
+    if (!Number.isFinite(line)) {
+      return "";
+    }
+
+    return (
+      String(
+        analysis.direction || ""
+      ) +
+      " " +
+      line
+    ).trim();
+
+  }
+
+
+  /* TEAM TOTAL */
+
+  if (marketKey === "teamTotal") {
+
+    const selectedTeam =
+      analysis.selectedTeam;
+
+    const direction =
+      analysis.direction;
+
+    let line = "";
+
+    if (
+      normalizeTeamName(selectedTeam) ===
+      normalizeTeamName(awayName)
+    ) {
+
+      line =
+        recordsNumber(
+          marketBoardLines.teamTotal.awayLine
+        );
+
+    } else if (
+      normalizeTeamName(selectedTeam) ===
+      normalizeTeamName(homeName)
+    ) {
+
+      line =
+        recordsNumber(
+          marketBoardLines.teamTotal.homeLine
+        );
+
+    }
+
+    return (
+      selectedTeam +
+      " " +
+      direction +
+      " " +
+      line
+    ).trim();
+
+  }
+
+
+  /* FIRST HALF TOTAL */
+
+  if (marketKey === "firstHalf") {
+
+    const line =
+      Number(
+        marketBoardLines.firstHalf.total
+      );
+
+    if (!Number.isFinite(line)) {
+      return "";
+    }
+
+    return (
+      String(
+        analysis.direction || ""
+      ) +
+      " " +
+      line
+    ).trim();
+
+  }
+
+
+  /* FIRST QUARTER TOTAL */
+
+  if (marketKey === "firstQuarter") {
+
+    const line =
+      Number(
+        marketBoardLines.firstQuarter.total
+      );
+
+    if (!Number.isFinite(line)) {
+      return "";
+    }
+
+    return (
+      String(
+        analysis.direction || ""
+      ) +
+      " " +
+      line
+    ).trim();
+
+  }
+
+
+  return "";
+
+}
+
+
+/* =========================================================
+   SEND ONE RECORD TO GOOGLE SHEETS
+========================================================= */
+
+async function sendCollegeRecord(
+  record
+) {
+
+  await fetch(
+    COLLEGE_RECORDS_URL,
+    {
+      method: "POST",
+
+      mode: "no-cors",
+
+      headers: {
+        "Content-Type":
+          "text/plain;charset=utf-8"
+      },
+
+      body:
+        JSON.stringify(record)
+    }
+  );
+
+}
+
+
+/* =========================================================
+   GET CURRENT VERIFIED KAMBI EVENT ID
+========================================================= */
+
+async function getCurrentRecordsEventId(
+  awayName,
+  homeName
+) {
+
+  const mainData =
+    await loadKambiNCAAF();
+
+  const event =
+    findExactKambiEvent(
+      mainData,
+      awayName,
+      homeName
+    );
+
+  return event?.id || null;
+
+}
+
+
+/* =========================================================
+   BUILD MARKET RECORD
+========================================================= */
+
+function buildMarketRecord(
+  gameId,
+  date,
+  awayName,
+  homeName,
+  config
+) {
+
+  const analysis =
+    marketBoardAnalysis[
+      config.key
+    ] || {};
+
+  const verdict =
+    recordsText(
+      config.verdictId
+    );
+
+  return {
+
+    type: "market",
+
+    gameId,
+
+    date,
+
+    awayTeam:
+      awayName,
+
+    homeTeam:
+      homeName,
+
+    market:
+      config.name,
+
+    marketSide:
+      recordsMarketSide(
+        config.key,
+        awayName,
+        homeName
+      ),
+
+    warRoomProjection:
+      recordsText(
+        config.projectionId
+      ),
+
+    bookLine:
+      recordsText(
+        config.bookId
+      ),
+
+    bookPrice:
+      recordsText(
+        config.bookId
+      ),
+
+    edge:
+      recordsText(
+        config.edgeId
+      ),
+
+    edgeSize:
+      Number.isFinite(
+        Number(
+          analysis.score
+        )
+      )
+        ? Number(
+            analysis.score
+          )
+        : "",
+
+    rank:
+      recordsText(
+        config.rankId
+      ),
+
+    verdict,
+
+    qualificationReason:
+      recordsReason(
+        verdict
+      ),
+
+    marketSource:
+      "Kambi"
+
+  };
+
+}
+
+
+/* =========================================================
+   SAVE CURRENT MATCHUP
+========================================================= */
+
+async function saveCurrentMatchupToRecords() {
+
+  const button =
+    document.getElementById(
+      "saveToRecordsButton"
+    );
+
+  const status =
+    document.getElementById(
+      "saveToRecordsStatus"
+    );
+
+  const awayName =
+    document.getElementById(
+      "awayTeam"
+    ).value;
+
+  const homeName =
+    document.getElementById(
+      "homeTeam"
+    ).value;
+
+
+  if (
+    !awayName ||
+    !homeName
+  ) {
+
+    status.textContent =
+      "Select and analyze a matchup first.";
+
+    return;
+  }
+
+
+  if (
+    countLoadedKambiMarkets() === 0
+  ) {
+
+    status.textContent =
+      "No verified Kambi markets loaded. Nothing saved.";
+
+    return;
+  }
+
+
+  button.disabled = true;
+
+  button.textContent =
+    "SAVING...";
+
+  status.textContent =
+    "Saving PROVE IT records...";
+
+
+  try {
+
+    /*
+      Get the VERIFIED Kambi event ID.
+      This becomes our permanent Game ID.
+    */
+
+    const eventId =
+      await getCurrentRecordsEventId(
+        awayName,
+        homeName
+      );
+
+
+    if (!eventId) {
+
+      throw new Error(
+        "Exact Kambi event could not be verified."
+      );
+
+    }
+
+
+    currentRecordsEventId =
+      String(eventId);
+
+    const gameId =
+      "CFB-" +
+      currentRecordsEventId;
+
+
+    /*
+      Date recorded in local browser time.
+    */
+
+    const now =
+      new Date();
+
+    const date =
+      [
+        now.getFullYear(),
+        String(
+          now.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+          now.getDate()
+        ).padStart(2, "0")
+      ].join("-");
+
+
+    /*
+      Locate the same team evidence already
+      being used by the War Room.
+    */
+
+    const awayTeam =
+      findTeam(
+        awayName
+      );
+
+    const homeTeam =
+      findTeam(
+        homeName
+      );
+
+    const awaySOS =
+      findSOS(
+        awayName
+      );
+
+    const homeSOS =
+      findSOS(
+        homeName
+      );
+
+
+    /*
+      FULL GAME PROJECTION
+    */
+
+    const fullAway =
+      Number(
+        marketBoardProjection.full.away
+      );
+
+    const fullHome =
+      Number(
+        marketBoardProjection.full.home
+      );
+
+    const projectedWinner =
+      fullAway > fullHome
+        ? awayName
+        : homeName;
+
+    const projectedMargin =
+      Number.isFinite(fullAway) &&
+      Number.isFinite(fullHome)
+        ? Math.abs(
+            fullAway - fullHome
+          )
+        : "";
+
+
+    /* =====================================================
+       1. GAME RECORD
+    ===================================================== */
+
+    const gameRecord = {
+
+      type: "game",
+
+      gameId,
+
+      date,
+
+      kickoffTime:
+        "",
+
+      awayTeam:
+        awayName,
+
+      homeTeam:
+        homeName,
+
+      venue:
+        "",
+
+      projectedWinner,
+
+      projectedFinalAway:
+        recordsNumber(
+          marketBoardProjection.full.away
+        ),
+
+      projectedFinalHome:
+        recordsNumber(
+          marketBoardProjection.full.home
+        ),
+
+      projectedMargin:
+        recordsNumber(
+          projectedMargin
+        ),
+
+      gameStatus:
+        "PREGAME"
+
+    };
+
+
+    /* =====================================================
+       2. TEAM EVIDENCE
+    ===================================================== */
+
+    const evidenceRecord = {
+
+      type: "evidence",
+
+      gameId,
+
+      date,
+
+      awayTeam:
+        awayName,
+
+      homeTeam:
+        homeName,
+
+      awayOffPPA:
+        recordsNumber(
+          awayTeam?.offense?.ppa
+        ),
+
+      homeOffPPA:
+        recordsNumber(
+          homeTeam?.offense?.ppa
+        ),
+
+      awayDefPPA:
+        recordsNumber(
+          awayTeam?.defense?.ppa
+        ),
+
+      homeDefPPA:
+        recordsNumber(
+          homeTeam?.defense?.ppa
+        ),
+
+      awaySuccessRate:
+        recordsNumber(
+          awayTeam?.offense?.successRate
+        ),
+
+      homeSuccessRate:
+        recordsNumber(
+          homeTeam?.offense?.successRate
+        ),
+
+      awayExplosiveness:
+        recordsNumber(
+          awayTeam?.offense?.explosiveness
+        ),
+
+      homeExplosiveness:
+        recordsNumber(
+          homeTeam?.offense?.explosiveness
+        ),
+
+      awayPPO:
+        recordsNumber(
+          awayTeam?.offense?.pointsPerOpportunity
+        ),
+
+      homePPO:
+        recordsNumber(
+          homeTeam?.offense?.pointsPerOpportunity
+        ),
+
+      awayDefSuccessRate:
+        recordsNumber(
+          awayTeam?.defense?.successRate
+        ),
+
+      homeDefSuccessRate:
+        recordsNumber(
+          homeTeam?.defense?.successRate
+        ),
+
+      awayDefExplosiveness:
+        recordsNumber(
+          awayTeam?.defense?.explosiveness
+        ),
+
+      homeDefExplosiveness:
+        recordsNumber(
+          homeTeam?.defense?.explosiveness
+        ),
+
+      awaySOSRank:
+        recordsNumber(
+          awaySOS
+            ?.resumeRanks
+            ?.strengthOfSchedule
+        ),
+
+      homeSOSRank:
+        recordsNumber(
+          homeSOS
+            ?.resumeRanks
+            ?.strengthOfSchedule
+        ),
+
+      q1AwayProjection:
+        recordsNumber(
+          marketBoardProjection.q1.away
+        ),
+
+      q1HomeProjection:
+        recordsNumber(
+          marketBoardProjection.q1.home
+        ),
+
+      q1TotalProjection:
+        recordsNumber(
+          marketBoardProjection.q1.total
+        ),
+
+      q1Margin:
+        recordsNumber(
+          marketBoardProjection.q1.margin
+        ),
+
+      h1AwayProjection:
+        recordsNumber(
+          marketBoardProjection.h1.away
+        ),
+
+      h1HomeProjection:
+        recordsNumber(
+          marketBoardProjection.h1.home
+        ),
+
+      h1TotalProjection:
+        recordsNumber(
+          marketBoardProjection.h1.total
+        ),
+
+      h1Margin:
+        recordsNumber(
+          marketBoardProjection.h1.margin
+        ),
+
+      fullAwayProjection:
+        recordsNumber(
+          marketBoardProjection.full.away
+        ),
+
+      fullHomeProjection:
+        recordsNumber(
+          marketBoardProjection.full.home
+        ),
+
+      fullTotalProjection:
+        recordsNumber(
+          marketBoardProjection.full.total
+        ),
+
+      fullMargin:
+        recordsNumber(
+          marketBoardProjection.full.margin
+        )
+
+    };
+
+
+    /* =====================================================
+       SIX MARKET DEFINITIONS
+    ===================================================== */
+
+    const marketConfigs = [
+
+      {
+        key: "spread",
+        name: "Spread",
+        rankId: "spreadRank",
+        projectionId:
+          "spreadProjection",
+        bookId: "spreadBook",
+        edgeId: "spreadEdge",
+        verdictId:
+          "spreadVerdict"
+      },
+
+      {
+        key: "moneyline",
+        name: "Moneyline",
+        rankId: "moneylineRank",
+        projectionId:
+          "moneylineProjection",
+        bookId: "moneylineBook",
+        edgeId: "moneylineEdge",
+        verdictId:
+          "moneylineVerdict"
+      },
+
+      {
+        key: "gameTotal",
+        name: "Game Total",
+        rankId: "gameTotalRank",
+        projectionId:
+          "gameTotalProjection",
+        bookId: "gameTotalBook",
+        edgeId: "gameTotalEdge",
+        verdictId:
+          "gameTotalVerdict"
+      },
+
+      {
+        key: "teamTotal",
+        name: "Team Total",
+        rankId: "teamTotalRank",
+        projectionId:
+          "teamTotalProjection",
+        bookId: "teamTotalBook",
+        edgeId: "teamTotalEdge",
+        verdictId:
+          "teamTotalVerdict"
+      },
+
+      {
+        key: "firstHalf",
+        name: "1H Total",
+        rankId: "firstHalfRank",
+        projectionId:
+          "firstHalfProjection",
+        bookId: "firstHalfBook",
+        edgeId: "firstHalfEdge",
+        verdictId:
+          "firstHalfVerdict"
+      },
+
+      {
+        key: "firstQuarter",
+        name: "1Q Total",
+        rankId:
+          "firstQuarterRank",
+        projectionId:
+          "firstQuarterProjection",
+        bookId:
+          "firstQuarterBook",
+        edgeId:
+          "firstQuarterEdge",
+        verdictId:
+          "firstQuarterVerdict"
+      }
+
+    ];
+
+
+    const marketRecords =
+      marketConfigs.map(
+        config =>
+          buildMarketRecord(
+            gameId,
+            date,
+            awayName,
+            homeName,
+            config
+          )
+      );
+
+
+    /* =====================================================
+       SIX FROZEN RECEIPT RECORDS
+    ===================================================== */
+
+    const receiptRecords =
+      marketRecords.map(
+        market => ({
+
+          type: "receipt",
+
+          gameId,
+
+          date,
+
+          matchup:
+            awayName +
+            " @ " +
+            homeName,
+
+          kickoff:
+            "",
+
+          market:
+            market.market,
+
+          warRoomProjection:
+            market.warRoomProjection,
+
+          verifiedBookMarket:
+            market.bookLine,
+
+          edge:
+            market.edge,
+
+          rank:
+            market.rank,
+
+          verdict:
+            market.verdict,
+
+          reason:
+            market.qualificationReason
+
+        })
+      );
+
+
+    /*
+      SEND:
+      1 Game Record
+      1 Team Evidence Record
+      6 Market Records
+      6 Receipt Records
+
+      TOTAL = 14 records
+    */
+
+    await sendCollegeRecord(
+      gameRecord
+    );
+
+    await sendCollegeRecord(
+      evidenceRecord
+    );
+
+
+    for (
+      const marketRecord
+      of marketRecords
+    ) {
+
+      await sendCollegeRecord(
+        marketRecord
+      );
+
+    }
+
+
+    for (
+      const receiptRecord
+      of receiptRecords
+    ) {
+
+      await sendCollegeRecord(
+        receiptRecord
+      );
+
+    }
+
+
+    currentRecordsSavedKey =
+      gameId;
+
+
+    button.textContent =
+      "SAVED ✓";
+
+    button.disabled = true;
+
+
+    status.textContent =
+      "✓ SAVED — PREGAME RECEIPT RECORDED";
+
+
+  } catch (error) {
+
+    console.error(
+      "SAVE TO RECORDS failed:",
+      error
+    );
+
+
+    button.textContent =
+      "SAVE TO RECORDS";
+
+    button.disabled = false;
+
+
+    status.textContent =
+      "SAVE FAILED — records were not completed.";
+
+  }
+
+}
+
+
+/* =========================================================
+   ACTIVATE SAVE BUTTON AFTER ANALYSIS
+========================================================= */
+
+function prepareSaveToRecordsButton() {
+
+  const button =
+    document.getElementById(
+      "saveToRecordsButton"
+    );
+
+  const status =
+    document.getElementById(
+      "saveToRecordsStatus"
+    );
+
+
+  if (
+    !button ||
+    !status
+  ) {
+    return;
+  }
+
+
+  const awayName =
+    document.getElementById(
+      "awayTeam"
+    ).value;
+
+  const homeName =
+    document.getElementById(
+      "homeTeam"
+    ).value;
+
+
+  if (
+    !awayName ||
+    !homeName ||
+    countLoadedKambiMarkets() === 0
+  ) {
+
+    button.disabled = true;
+
+    button.textContent =
+      "SAVE TO RECORDS";
+
+    status.textContent =
+      "Analyze a matchup before saving.";
+
+    return;
+
+  }
+
+
+  const matchupKey =
+    normalizeTeamName(
+      awayName
+    ) +
+    "|" +
+    normalizeTeamName(
+      homeName
+    );
+
+
+  currentRecordsMatchupKey =
+    matchupKey;
+
+
+  button.disabled = false;
+
+  button.textContent =
+    "SAVE TO RECORDS";
+
+  status.textContent =
+    countLoadedKambiMarkets() +
+    "/6 verified markets ready to save.";
+
+}
+
+
+/* =========================================================
+   WATCH FOR COMPLETED MARKET ANALYSIS
+========================================================= */
+
+const originalRunMarketBoardAnalysis =
+  runMarketBoardAnalysis;
+
+
+runMarketBoardAnalysis =
+  function(...args) {
+
+    const result =
+      originalRunMarketBoardAnalysis(
+        ...args
+      );
+
+    prepareSaveToRecordsButton();
+
+    return result;
+
+  };
+
+
+document
+  .getElementById(
+    "saveToRecordsButton"
+  )
+  .addEventListener(
+    "click",
+    saveCurrentMatchupToRecords
+  );
+
+
+/* =========================================================
+   START
+========================================================= */
+
 loadCFBData();
+
 </script>
 </body>
 </html>  
