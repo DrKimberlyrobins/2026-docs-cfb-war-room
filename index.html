@@ -5644,6 +5644,7 @@ document
 
 /* =========================================================
    PROVE IT — SAVE TO RECORDS
+   HOUSEKEEPING VERSION
 ========================================================= */
 
 const COLLEGE_RECORDS_URL =
@@ -5655,7 +5656,7 @@ let currentRecordsSavedKey = null;
 
 
 /* =========================================================
-   SMALL RECORD HELPERS
+   RECORD HELPERS
 ========================================================= */
 
 function recordsText(id) {
@@ -5672,11 +5673,37 @@ function recordsText(id) {
 
 function recordsNumber(value) {
 
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "";
+  }
+
   const number =
     Number(value);
 
   return Number.isFinite(number)
     ? number
+    : "";
+
+}
+
+
+/*
+  Records Book uses one decimal place for projections.
+  Example:
+  19.92560536 -> 19.9
+*/
+
+function recordsProjection(value) {
+
+  const number =
+    Number(value);
+
+  return Number.isFinite(number)
+    ? Number(number.toFixed(1))
     : "";
 
 }
@@ -5696,6 +5723,62 @@ function recordsReason(verdict) {
 
 }
 
+
+function recordsPrice(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "";
+  }
+
+  return number > 0
+    ? "+" + number
+    : String(number);
+
+}
+
+
+function recordsLine(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "";
+  }
+
+  return Number.isInteger(number)
+    ? String(number)
+    : String(
+        Number(
+          number.toFixed(1)
+        )
+      );
+
+}
+
+
+function recordsSignedLine(value) {
+
+  const number =
+    Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "";
+  }
+
+  return number > 0
+    ? "+" + recordsLine(number)
+    : recordsLine(number);
+
+}
+
+
+/* =========================================================
+   MARKET SIDE
+========================================================= */
 
 function recordsMarketSide(
   marketKey,
@@ -5727,10 +5810,8 @@ function recordsMarketSide(
       return (
         analysis.preferredTeam +
         " " +
-        formatMarketLine(
-          Number(
-            analysis.preferredLine
-          )
+        recordsSignedLine(
+          analysis.preferredLine
         )
       );
 
@@ -5787,7 +5868,7 @@ function recordsMarketSide(
         analysis.direction || ""
       ) +
       " " +
-      line
+      recordsLine(line)
     ).trim();
 
   }
@@ -5811,7 +5892,7 @@ function recordsMarketSide(
     ) {
 
       line =
-        recordsNumber(
+        recordsLine(
           marketBoardLines.teamTotal.awayLine
         );
 
@@ -5821,7 +5902,7 @@ function recordsMarketSide(
     ) {
 
       line =
-        recordsNumber(
+        recordsLine(
           marketBoardLines.teamTotal.homeLine
         );
 
@@ -5838,7 +5919,7 @@ function recordsMarketSide(
   }
 
 
-  /* FIRST HALF TOTAL */
+  /* 1H TOTAL */
 
   if (marketKey === "firstHalf") {
 
@@ -5856,13 +5937,13 @@ function recordsMarketSide(
         analysis.direction || ""
       ) +
       " " +
-      line
+      recordsLine(line)
     ).trim();
 
   }
 
 
-  /* FIRST QUARTER TOTAL */
+  /* 1Q TOTAL */
 
   if (marketKey === "firstQuarter") {
 
@@ -5880,7 +5961,7 @@ function recordsMarketSide(
         analysis.direction || ""
       ) +
       " " +
-      line
+      recordsLine(line)
     ).trim();
 
   }
@@ -5892,7 +5973,248 @@ function recordsMarketSide(
 
 
 /* =========================================================
-   SEND ONE RECORD TO GOOGLE SHEETS
+   CLEAN BOOK LINE
+========================================================= */
+
+function recordsBookLine(
+  marketKey,
+  awayName,
+  homeName
+) {
+
+  if (marketKey === "spread") {
+
+    return (
+      awayName +
+      " " +
+      recordsSignedLine(
+        marketBoardLines.spread.awayLine
+      ) +
+      " | " +
+      homeName +
+      " " +
+      recordsSignedLine(
+        marketBoardLines.spread.homeLine
+      )
+    );
+
+  }
+
+
+  if (marketKey === "moneyline") {
+
+    return (
+      awayName +
+      " ML | " +
+      homeName +
+      " ML"
+    );
+
+  }
+
+
+  if (marketKey === "gameTotal") {
+
+    return (
+      "O " +
+      recordsLine(
+        marketBoardLines.gameTotal.line
+      ) +
+      " | U " +
+      recordsLine(
+        marketBoardLines.gameTotal.line
+      )
+    );
+
+  }
+
+
+  if (marketKey === "teamTotal") {
+
+    return (
+      awayName +
+      " " +
+      recordsLine(
+        marketBoardLines.teamTotal.awayLine
+      ) +
+      " | " +
+      homeName +
+      " " +
+      recordsLine(
+        marketBoardLines.teamTotal.homeLine
+      )
+    );
+
+  }
+
+
+  if (marketKey === "firstHalf") {
+
+    return (
+      "O " +
+      recordsLine(
+        marketBoardLines.firstHalf.total
+      ) +
+      " | U " +
+      recordsLine(
+        marketBoardLines.firstHalf.total
+      )
+    );
+
+  }
+
+
+  if (marketKey === "firstQuarter") {
+
+    return (
+      "O " +
+      recordsLine(
+        marketBoardLines.firstQuarter.total
+      ) +
+      " | U " +
+      recordsLine(
+        marketBoardLines.firstQuarter.total
+      )
+    );
+
+  }
+
+
+  return "";
+
+}
+
+
+/* =========================================================
+   CLEAN BOOK PRICE
+========================================================= */
+
+function recordsBookPrice(
+  marketKey,
+  awayName,
+  homeName
+) {
+
+  if (marketKey === "spread") {
+
+    return (
+      awayName +
+      " " +
+      recordsPrice(
+        marketBoardLines.spread.awayPrice
+      ) +
+      " | " +
+      homeName +
+      " " +
+      recordsPrice(
+        marketBoardLines.spread.homePrice
+      )
+    );
+
+  }
+
+
+  if (marketKey === "moneyline") {
+
+    return (
+      awayName +
+      " " +
+      recordsPrice(
+        marketBoardLines.moneyline.awayPrice
+      ) +
+      " | " +
+      homeName +
+      " " +
+      recordsPrice(
+        marketBoardLines.moneyline.homePrice
+      )
+    );
+
+  }
+
+
+  if (marketKey === "gameTotal") {
+
+    return (
+      "O " +
+      recordsPrice(
+        marketBoardLines.gameTotal.overPrice
+      ) +
+      " | U " +
+      recordsPrice(
+        marketBoardLines.gameTotal.underPrice
+      )
+    );
+
+  }
+
+
+  if (marketKey === "teamTotal") {
+
+    return (
+      awayName +
+      " O " +
+      recordsPrice(
+        marketBoardLines.teamTotal.awayOverPrice
+      ) +
+      " / U " +
+      recordsPrice(
+        marketBoardLines.teamTotal.awayUnderPrice
+      ) +
+      " | " +
+      homeName +
+      " O " +
+      recordsPrice(
+        marketBoardLines.teamTotal.homeOverPrice
+      ) +
+      " / U " +
+      recordsPrice(
+        marketBoardLines.teamTotal.homeUnderPrice
+      )
+    );
+
+  }
+
+
+  if (marketKey === "firstHalf") {
+
+    return (
+      "O " +
+      recordsPrice(
+        marketBoardLines.firstHalf.overPrice
+      ) +
+      " | U " +
+      recordsPrice(
+        marketBoardLines.firstHalf.underPrice
+      )
+    );
+
+  }
+
+
+  if (marketKey === "firstQuarter") {
+
+    return (
+      "O " +
+      recordsPrice(
+        marketBoardLines.firstQuarter.overPrice
+      ) +
+      " | U " +
+      recordsPrice(
+        marketBoardLines.firstQuarter.underPrice
+      )
+    );
+
+  }
+
+
+  return "";
+
+}
+
+
+/* =========================================================
+   SEND ONE RECORD
 ========================================================= */
 
 async function sendCollegeRecord(
@@ -5920,10 +6242,10 @@ async function sendCollegeRecord(
 
 
 /* =========================================================
-   GET CURRENT VERIFIED KAMBI EVENT ID
+   GET EXACT KAMBI EVENT
 ========================================================= */
 
-async function getCurrentRecordsEventId(
+async function getCurrentRecordsEvent(
   awayName,
   homeName
 ) {
@@ -5931,14 +6253,102 @@ async function getCurrentRecordsEventId(
   const mainData =
     await loadKambiNCAAF();
 
-  const event =
+  return (
     findExactKambiEvent(
       mainData,
       awayName,
       homeName
-    );
+    ) || null
+  );
 
-  return event?.id || null;
+}
+
+
+/* =========================================================
+   EVENT INFORMATION
+========================================================= */
+
+function recordsEventDate(event) {
+
+  const raw =
+    event?.start ||
+    event?.startTime ||
+    event?.event?.start ||
+    event?.event?.startTime ||
+    "";
+
+  if (!raw) {
+    return "";
+  }
+
+  const date =
+    new Date(raw);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return [
+    date.getFullYear(),
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0"),
+    String(
+      date.getDate()
+    ).padStart(2, "0")
+  ].join("-");
+
+}
+
+
+function recordsKickoff(event) {
+
+  const raw =
+    event?.start ||
+    event?.startTime ||
+    event?.event?.start ||
+    event?.event?.startTime ||
+    "";
+
+  if (!raw) {
+    return "";
+  }
+
+  const date =
+    new Date(raw);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return date.toLocaleTimeString(
+    [],
+    {
+      hour: "numeric",
+      minute: "2-digit"
+    }
+  );
+
+}
+
+
+function recordsVenue(event) {
+
+  return (
+    event?.venue?.name ||
+    event?.venueName ||
+    event?.event?.venue?.name ||
+    event?.event?.venueName ||
+    ""
+  );
 
 }
 
@@ -5995,13 +6405,17 @@ function buildMarketRecord(
       ),
 
     bookLine:
-      recordsText(
-        config.bookId
+      recordsBookLine(
+        config.key,
+        awayName,
+        homeName
       ),
 
     bookPrice:
-      recordsText(
-        config.bookId
+      recordsBookPrice(
+        config.key,
+        awayName,
+        homeName
       ),
 
     edge:
@@ -6015,7 +6429,7 @@ function buildMarketRecord(
           analysis.score
         )
       )
-        ? Number(
+        ? recordsProjection(
             analysis.score
           )
         : "",
@@ -6079,12 +6493,21 @@ async function saveCurrentMatchupToRecords() {
   }
 
 
-  if (
-    countLoadedKambiMarkets() === 0
-  ) {
+  const loadedMarkets =
+    countLoadedKambiMarkets();
+
+
+  /*
+    We designed the receipt for all six markets.
+    Do not freeze an incomplete receipt.
+  */
+
+  if (loadedMarkets !== 6) {
 
     status.textContent =
-      "No verified Kambi markets loaded. Nothing saved.";
+      "Waiting for all 6 verified markets. " +
+      loadedMarkets +
+      "/6 loaded.";
 
     return;
   }
@@ -6101,19 +6524,14 @@ async function saveCurrentMatchupToRecords() {
 
   try {
 
-    /*
-      Get the VERIFIED Kambi event ID.
-      This becomes our permanent Game ID.
-    */
-
-    const eventId =
-      await getCurrentRecordsEventId(
+    const event =
+      await getCurrentRecordsEvent(
         awayName,
         homeName
       );
 
 
-    if (!eventId) {
+    if (!event?.id) {
 
       throw new Error(
         "Exact Kambi event could not be verified."
@@ -6123,36 +6541,34 @@ async function saveCurrentMatchupToRecords() {
 
 
     currentRecordsEventId =
-      String(eventId);
+      String(event.id);
+
 
     const gameId =
       "CFB-" +
       currentRecordsEventId;
 
 
-    /*
-      Date recorded in local browser time.
-    */
-
-    const now =
-      new Date();
-
     const date =
+      recordsEventDate(event) ||
       [
-        now.getFullYear(),
+        new Date().getFullYear(),
         String(
-          now.getMonth() + 1
+          new Date().getMonth() + 1
         ).padStart(2, "0"),
         String(
-          now.getDate()
+          new Date().getDate()
         ).padStart(2, "0")
       ].join("-");
 
 
-    /*
-      Locate the same team evidence already
-      being used by the War Room.
-    */
+    const kickoff =
+      recordsKickoff(event);
+
+
+    const venue =
+      recordsVenue(event);
+
 
     const awayTeam =
       findTeam(
@@ -6175,10 +6591,6 @@ async function saveCurrentMatchupToRecords() {
       );
 
 
-    /*
-      FULL GAME PROJECTION
-    */
-
     const fullAway =
       Number(
         marketBoardProjection.full.away
@@ -6189,22 +6601,25 @@ async function saveCurrentMatchupToRecords() {
         marketBoardProjection.full.home
       );
 
+
     const projectedWinner =
       fullAway > fullHome
         ? awayName
         : homeName;
 
+
     const projectedMargin =
       Number.isFinite(fullAway) &&
       Number.isFinite(fullHome)
         ? Math.abs(
-            fullAway - fullHome
+            fullAway -
+            fullHome
           )
         : "";
 
 
     /* =====================================================
-       1. GAME RECORD
+       GAME RECORD
     ===================================================== */
 
     const gameRecord = {
@@ -6216,7 +6631,7 @@ async function saveCurrentMatchupToRecords() {
       date,
 
       kickoffTime:
-        "",
+        kickoff,
 
       awayTeam:
         awayName,
@@ -6224,23 +6639,22 @@ async function saveCurrentMatchupToRecords() {
       homeTeam:
         homeName,
 
-      venue:
-        "",
+      venue,
 
       projectedWinner,
 
       projectedFinalAway:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.full.away
         ),
 
       projectedFinalHome:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.full.home
         ),
 
       projectedMargin:
-        recordsNumber(
+        recordsProjection(
           projectedMargin
         ),
 
@@ -6251,7 +6665,7 @@ async function saveCurrentMatchupToRecords() {
 
 
     /* =====================================================
-       2. TEAM EVIDENCE
+       TEAM EVIDENCE
     ===================================================== */
 
     const evidenceRecord = {
@@ -6353,62 +6767,62 @@ async function saveCurrentMatchupToRecords() {
         ),
 
       q1AwayProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.q1.away
         ),
 
       q1HomeProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.q1.home
         ),
 
       q1TotalProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.q1.total
         ),
 
       q1Margin:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.q1.margin
         ),
 
       h1AwayProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.h1.away
         ),
 
       h1HomeProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.h1.home
         ),
 
       h1TotalProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.h1.total
         ),
 
       h1Margin:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.h1.margin
         ),
 
       fullAwayProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.full.away
         ),
 
       fullHomeProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.full.home
         ),
 
       fullTotalProjection:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.full.total
         ),
 
       fullMargin:
-        recordsNumber(
+        recordsProjection(
           marketBoardProjection.full.margin
         )
 
@@ -6416,7 +6830,7 @@ async function saveCurrentMatchupToRecords() {
 
 
     /* =====================================================
-       SIX MARKET DEFINITIONS
+       SIX MARKETS
     ===================================================== */
 
     const marketConfigs = [
@@ -6427,7 +6841,6 @@ async function saveCurrentMatchupToRecords() {
         rankId: "spreadRank",
         projectionId:
           "spreadProjection",
-        bookId: "spreadBook",
         edgeId: "spreadEdge",
         verdictId:
           "spreadVerdict"
@@ -6439,7 +6852,6 @@ async function saveCurrentMatchupToRecords() {
         rankId: "moneylineRank",
         projectionId:
           "moneylineProjection",
-        bookId: "moneylineBook",
         edgeId: "moneylineEdge",
         verdictId:
           "moneylineVerdict"
@@ -6451,7 +6863,6 @@ async function saveCurrentMatchupToRecords() {
         rankId: "gameTotalRank",
         projectionId:
           "gameTotalProjection",
-        bookId: "gameTotalBook",
         edgeId: "gameTotalEdge",
         verdictId:
           "gameTotalVerdict"
@@ -6463,7 +6874,6 @@ async function saveCurrentMatchupToRecords() {
         rankId: "teamTotalRank",
         projectionId:
           "teamTotalProjection",
-        bookId: "teamTotalBook",
         edgeId: "teamTotalEdge",
         verdictId:
           "teamTotalVerdict"
@@ -6475,7 +6885,6 @@ async function saveCurrentMatchupToRecords() {
         rankId: "firstHalfRank",
         projectionId:
           "firstHalfProjection",
-        bookId: "firstHalfBook",
         edgeId: "firstHalfEdge",
         verdictId:
           "firstHalfVerdict"
@@ -6488,8 +6897,6 @@ async function saveCurrentMatchupToRecords() {
           "firstQuarterRank",
         projectionId:
           "firstQuarterProjection",
-        bookId:
-          "firstQuarterBook",
         edgeId:
           "firstQuarterEdge",
         verdictId:
@@ -6513,7 +6920,7 @@ async function saveCurrentMatchupToRecords() {
 
 
     /* =====================================================
-       SIX FROZEN RECEIPT RECORDS
+       SIX RECEIPT RECORDS
     ===================================================== */
 
     const receiptRecords =
@@ -6531,8 +6938,7 @@ async function saveCurrentMatchupToRecords() {
             " @ " +
             homeName,
 
-          kickoff:
-            "",
+          kickoff,
 
           market:
             market.market,
@@ -6541,7 +6947,15 @@ async function saveCurrentMatchupToRecords() {
             market.warRoomProjection,
 
           verifiedBookMarket:
-            market.bookLine,
+            (
+              market.bookLine +
+              (
+                market.bookPrice
+                  ? " | " +
+                    market.bookPrice
+                  : ""
+              )
+            ),
 
           edge:
             market.edge,
@@ -6559,15 +6973,9 @@ async function saveCurrentMatchupToRecords() {
       );
 
 
-    /*
-      SEND:
-      1 Game Record
-      1 Team Evidence Record
-      6 Market Records
-      6 Receipt Records
-
-      TOTAL = 14 records
-    */
+    /* =====================================================
+       SEND 14 RECORDS
+    ===================================================== */
 
     await sendCollegeRecord(
       gameRecord
@@ -6674,10 +7082,14 @@ function prepareSaveToRecordsButton() {
     ).value;
 
 
+  const loadedMarkets =
+    countLoadedKambiMarkets();
+
+
   if (
     !awayName ||
     !homeName ||
-    countLoadedKambiMarkets() === 0
+    loadedMarkets !== 6
   ) {
 
     button.disabled = true;
@@ -6685,15 +7097,30 @@ function prepareSaveToRecordsButton() {
     button.textContent =
       "SAVE TO RECORDS";
 
-    status.textContent =
-      "Analyze a matchup before saving.";
+
+    if (
+      awayName &&
+      homeName
+    ) {
+
+      status.textContent =
+        "Waiting for all 6 verified markets. " +
+        loadedMarkets +
+        "/6 loaded.";
+
+    } else {
+
+      status.textContent =
+        "Analyze a matchup before saving.";
+
+    }
 
     return;
 
   }
 
 
-  const matchupKey =
+  currentRecordsMatchupKey =
     normalizeTeamName(
       awayName
     ) +
@@ -6703,24 +7130,19 @@ function prepareSaveToRecordsButton() {
     );
 
 
-  currentRecordsMatchupKey =
-    matchupKey;
-
-
   button.disabled = false;
 
   button.textContent =
     "SAVE TO RECORDS";
 
   status.textContent =
-    countLoadedKambiMarkets() +
-    "/6 verified markets ready to save.";
+    "6/6 verified markets ready to save.";
 
 }
 
 
 /* =========================================================
-   WATCH FOR COMPLETED MARKET ANALYSIS
+   WATCH COMPLETED MARKET ANALYSIS
 ========================================================= */
 
 const originalRunMarketBoardAnalysis =
@@ -6753,9 +7175,8 @@ document
 
 
 /* =========================================================
-   START
+   END PROVE IT RECORDS
 ========================================================= */
-
 loadCFBData();
 
 </script>
