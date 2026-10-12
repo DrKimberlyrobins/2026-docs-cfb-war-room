@@ -11533,23 +11533,23 @@
   },
   {
     "team": "Morehouse",
-    "games": 6,
-    "avg1QScored": 4.666666666666667,
-    "avg1QAllowed": 7,
-    "avg1HScored": 10.666666666666666,
-    "avg1HAllowed": 15.333333333333334,
-    "avgFullScored": 28.166666666666668,
-    "avgFullAllowed": 31.5,
-    "homeGames": 4,
+    "games": 7,
+    "avg1QScored": 7,
+    "avg1QAllowed": 6,
+    "avg1HScored": 12.142857142857142,
+    "avg1HAllowed": 13.571428571428571,
+    "avgFullScored": 29,
+    "avgFullAllowed": 30.285714285714285,
+    "homeGames": 5,
     "awayGames": 2,
     "home": {
-      "games": 4,
-      "avg1QScored": 5.25,
-      "avg1QAllowed": 8.75,
-      "avg1HScored": 8.75,
-      "avg1HAllowed": 17.75,
-      "avgFullScored": 27.5,
-      "avgFullAllowed": 38.5
+      "games": 5,
+      "avg1QScored": 8.4,
+      "avg1QAllowed": 7,
+      "avg1HScored": 11.2,
+      "avg1HAllowed": 14.8,
+      "avgFullScored": 28.8,
+      "avgFullAllowed": 35.4
     },
     "away": {
       "games": 2,
@@ -15255,15 +15255,15 @@
   },
   {
     "team": "Savannah State",
-    "games": 4,
-    "avg1QScored": 5.25,
-    "avg1QAllowed": 9.25,
-    "avg1HScored": 7.75,
-    "avg1HAllowed": 24.75,
-    "avgFullScored": 18,
-    "avgFullAllowed": 49.25,
+    "games": 5,
+    "avg1QScored": 4.2,
+    "avg1QAllowed": 11.6,
+    "avg1HScored": 6.8,
+    "avg1HAllowed": 24,
+    "avgFullScored": 19,
+    "avgFullAllowed": 46.2,
     "homeGames": 3,
-    "awayGames": 1,
+    "awayGames": 2,
     "home": {
       "games": 3,
       "avg1QScored": 7,
@@ -15274,13 +15274,13 @@
       "avgFullAllowed": 36.666666666666664
     },
     "away": {
-      "games": 1,
+      "games": 2,
       "avg1QScored": 0,
       "avg1QAllowed": 21,
-      "avg1HScored": 0,
-      "avg1HAllowed": 52,
-      "avgFullScored": 0,
-      "avgFullAllowed": 87
+      "avg1HScored": 1.5,
+      "avg1HAllowed": 36.5,
+      "avgFullScored": 11.5,
+      "avgFullAllowed": 60.5
     }
   },
   {
