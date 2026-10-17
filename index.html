@@ -5506,141 +5506,399 @@ updateHalftimeIntelligence();
    Independent estimates — not verified sportsbook 1H lines
 ========================================================= */
 
+
+/* =========================================================
+   HALFTIME INTELLIGENCE CALCULATOR
+   METHOD 1: 50% TOTAL / 47% SPREAD
+   METHOD 2: 52% TOTAL / 59% SPREAD
+   SOURCE: KAMBI FULL-GAME MARKETS ONLY
+========================================================= */
+
 function updateHalftimeIntelligence() {
+
   const target = document.getElementById(
     "halftimeIntelligenceResults"
   );
+
   if (!target) return;
 
-  const awayName = document.getElementById("awayTeam")?.value;
-  const homeName = document.getElementById("homeTeam")?.value;
+  const awayName =
+    document.getElementById("awayTeam")?.value || "";
 
-  const valid = value =>
-    value !== null &&
-    value !== undefined &&
-    value !== "" &&
-    Number.isFinite(Number(value));
+  const homeName =
+    document.getElementById("homeTeam")?.value || "";
 
-  const number = value =>
-    valid(value) ? Number(value) : null;
+  const escapeHTML = value =>
+    String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[character]));
 
-  const fmt = value =>
-    Number.isFinite(value) ? value.toFixed(1) : "—";
+  const validNumber = value => {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) return null;
 
-  if (!awayName || !homeName || awayName === homeName) {
-    target.textContent = "Select two different teams.";
-    return;
-  }
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
 
-  const model = marketBoardProjection.h1;
-  const total = number(marketBoardLines.gameTotal.line);
-  const homeSpread = number(marketBoardLines.spread.homeLine);
+  const round2 = value =>
+    Math.round((value + Number.EPSILON) * 100) / 100;
 
-  const modelReady =
-    valid(model.away) && valid(model.home);
+  const display = (value, digits = 2) =>
+    Number.isFinite(value)
+      ? value.toFixed(digits)
+      : "—";
 
-  if (!modelReady && (total === null || homeSpread === null)) {
+  if (
+    !awayName ||
+    !homeName ||
+    awayName === homeName
+  ) {
     target.textContent =
-      "Waiting for verified matchup data and market lines.";
+      "Select two different teams to begin.";
     return;
   }
 
-  function calculateMethod(totalRate, spreadRate) {
-    if (total === null || homeSpread === null) return null;
+  /* LIVE KAMBI FULL-GAME LINES */
 
-    const halfTotal = total * totalRate;
-    const halfMargin = Math.abs(homeSpread) * spreadRate;
+  const fullTotal = validNumber(
+    marketBoardLines.gameTotal.line
+  );
 
-    // Negative home spread means home is favored.
-    const homeFavorite = homeSpread < 0;
-    const awayFavorite = homeSpread > 0;
+  const awaySpread = validNumber(
+    marketBoardLines.spread.awayLine
+  );
 
-    const favoriteScore = (halfTotal + halfMargin) / 2;
-    const underdogScore = (halfTotal - halfMargin) / 2;
+  const homeSpread = validNumber(
+    marketBoardLines.spread.homeLine
+  );
+
+  const spreadAvailable =
+    awaySpread !== null ||
+    homeSpread !== null;
+
+  const marketReady =
+    fullTotal !== null &&
+    fullTotal > 0 &&
+    spreadAvailable;
+
+  // A negative spread identifies the favored side.
+  // Zero is treated as a pick'em.
+  const selectedHomeSpread =
+    homeSpread !== null
+      ? homeSpread
+      : awaySpread !== null
+        ? -awaySpread
+        : null;
+
+  /* EXACT GOOGLE SHEETS CALCULATION ORDER */
+
+  function calculateMethod(totalPercent, spreadPercent) {
+
+    if (!marketReady) return null;
+
+    const halfTotal = round2(
+      fullTotal * totalPercent
+    );
+
+    const halfSpread = -round2(
+      Math.abs(selectedHomeSpread) * spreadPercent
+    );
+
+    const favoritePoints = round2(
+      (halfTotal + Math.abs(halfSpread)) / 2
+    );
+
+    const underdogPoints = round2(
+      (halfTotal - Math.abs(halfSpread)) / 2
+    );
+
+    let awayPoints;
+    let homePoints;
+
+    if (selectedHomeSpread < 0) {
+      homePoints = favoritePoints;
+      awayPoints = underdogPoints;
+    } else if (selectedHomeSpread > 0) {
+      awayPoints = favoritePoints;
+      homePoints = underdogPoints;
+    } else {
+      awayPoints = round2(halfTotal / 2);
+      homePoints = round2(halfTotal / 2);
+    }
 
     return {
-      away: awayFavorite ? favoriteScore :
-            homeFavorite ? underdogScore : halfTotal / 2,
-      home: homeFavorite ? favoriteScore :
-            awayFavorite ? underdogScore : halfTotal / 2,
+      away: awayPoints,
+      home: homePoints,
       total: halfTotal,
-      margin: halfMargin
+      margin: Math.abs(halfSpread)
     };
   }
 
   const method1 = calculateMethod(0.50, 0.47);
   const method2 = calculateMethod(0.52, 0.59);
 
-  function row(label, result) {
-    if (!result) {
-      return `<tr><td>${label}</td>
-        <td colspan="4">Verified full-game spread and total required</td>
-      </tr>`;
+  /* INDEPENDENT WAR ROOM 1H MODEL */
+
+  const model = marketBoardProjection.h1;
+
+  const modelAway = validNumber(model.away);
+  const modelHome = validNumber(model.home);
+  const modelTotal = validNumber(model.total);
+  const modelMargin = validNumber(model.margin);
+
+  const warRoomReady =
+    modelAway !== null &&
+    modelHome !== null;
+
+  const warRoom = warRoomReady
+    ? {
+        away: modelAway,
+        home: modelHome,
+        total: modelTotal,
+        margin: modelMargin
+      }
+    : null;
+
+  const verifiedHalfTotal = validNumber(
+    marketBoardLines.firstHalf.total
+  );
+
+  /* THREE SEPARATE DISPLAY PANELS */
+
+  function createPanel(title, subtitle, data, source) {
+
+    const available = data !== null;
+
+    let leadingTeam = "—";
+
+    if (available) {
+      if (data.away > data.home) {
+        leadingTeam = escapeHTML(awayName);
+      } else if (data.home > data.away) {
+        leadingTeam = escapeHTML(homeName);
+      } else {
+        leadingTeam = "Tied";
+      }
     }
 
-    return `<tr>
-      <td>${label}</td>
-      <td>${fmt(result.away)}</td>
-      <td>${fmt(result.home)}</td>
-      <td>${fmt(result.total)}</td>
-      <td>${fmt(result.margin)}</td>
-    </tr>`;
+    return `
+      <div style="
+        background:#0b1727;
+        border:1px solid #34465b;
+        border-radius:12px;
+        padding:16px;
+        min-width:0;
+        text-align:center;
+      ">
+
+        <div style="
+          color:#ffc533;
+          font-weight:800;
+          font-size:18px;
+          margin-bottom:5px;
+        ">
+          ${title}
+        </div>
+
+        <div style="
+          color:#a9c3df;
+          font-size:12px;
+          margin-bottom:12px;
+        ">
+          ${subtitle}
+        </div>
+
+        <div style="
+          color:#9fb5cb;
+          font-size:11px;
+          margin-bottom:15px;
+        ">
+          ${source}
+        </div>
+
+        <div style="
+          color:#ffc533;
+          font-size:12px;
+          font-weight:bold;
+        ">
+          AWAY
+        </div>
+
+        <div style="color:#c5d8ed;font-size:12px">
+          ${escapeHTML(awayName)}
+        </div>
+
+        <div style="
+          color:#ffffff;
+          font-size:28px;
+          font-weight:800;
+          margin:5px 0 16px;
+        ">
+          ${available ? display(data.away) : "—"}
+        </div>
+
+        <div style="
+          color:#ffc533;
+          font-size:12px;
+          font-weight:bold;
+        ">
+          HOME
+        </div>
+
+        <div style="color:#c5d8ed;font-size:12px">
+          ${escapeHTML(homeName)}
+        </div>
+
+        <div style="
+          color:#ffffff;
+          font-size:28px;
+          font-weight:800;
+          margin:5px 0 16px;
+        ">
+          ${available ? display(data.home) : "—"}
+        </div>
+
+        <div style="
+          border-top:1px solid #34465b;
+          padding-top:12px;
+        ">
+          <div style="color:#ffc533;font-size:12px">
+            1H TOTAL
+          </div>
+
+          <div style="
+            color:#ffffff;
+            font-size:25px;
+            font-weight:bold;
+            margin:5px 0 14px;
+          ">
+            ${available ? display(data.total) : "—"}
+          </div>
+
+          <div style="color:#ffc533;font-size:12px">
+            1H MARGIN
+          </div>
+
+          <div style="
+            color:#ffffff;
+            font-size:23px;
+            font-weight:bold;
+            margin:5px 0;
+          ">
+            ${available ? display(data.margin) : "—"}
+          </div>
+
+          <div style="color:#a9c3df;font-size:12px">
+            ${available ? leadingTeam : "AWAITING DATA"}
+          </div>
+        </div>
+
+      </div>
+    `;
   }
 
-  const modelRow = modelReady
-    ? row("WAR ROOM 1H MODEL", {
-        away: Number(model.away),
-        home: Number(model.home),
-        total: Number(model.total),
-        margin: Number(model.margin)
-      })
-    : `<tr><td>WAR ROOM 1H MODEL</td>
-       <td colspan="4">Projection unavailable</td></tr>`;
+  const kambiStatus = marketReady
+    ? `KAMBI FULL GAME: Total ${display(fullTotal)} |
+       Away spread ${display(
+         awaySpread !== null
+           ? awaySpread
+           : -selectedHomeSpread
+       )} |
+       Home spread ${display(selectedHomeSpread)}`
+    : "AWAITING KAMBI FULL-GAME SPREAD AND TOTAL";
 
-  const actual1H = number(marketBoardLines.firstHalf.total);
-
-  const actualLine = actual1H === null
-    ? "NO VERIFIED 1H TOTAL"
-    : fmt(actual1H);
-
-  const difference = modelReady && actual1H !== null
-    ? fmt(Number(model.total) - actual1H)
-    : "—";
+  const verifiedHalfText =
+    verifiedHalfTotal !== null
+      ? display(verifiedHalfTotal)
+      : "NOT AVAILABLE";
 
   target.innerHTML = `
-    <div style="font-weight:bold;color:#f5c542;margin-bottom:12px">
-      ${awayName} @ ${homeName}
+
+    <div style="
+      text-align:center;
+      color:#ffc533;
+      font-weight:bold;
+      margin-bottom:15px;
+    ">
+      ${escapeHTML(awayName)} @ ${escapeHTML(homeName)}
     </div>
 
-    <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;text-align:center">
-        <thead>
-          <tr style="color:#f5c542">
-            <th>METHOD</th>
-            <th>AWAY</th>
-            <th>HOME</th>
-            <th>1H TOTAL</th>
-            <th>MARGIN</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${modelRow}
-          ${row("METHOD 1 (50% / 47%)", method1)}
-          ${row("METHOD 2 (52% / 59%)", method2)}
-        </tbody>
-      </table>
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(
+        auto-fit,
+        minmax(min(100%, 235px), 1fr)
+      );
+      gap:14px;
+      margin-bottom:18px;
+    ">
+
+      ${createPanel(
+        "METHOD 1",
+        "50% TOTAL / 47% SPREAD",
+        method1,
+        "LIVE KAMBI DERIVED"
+      )}
+
+      ${createPanel(
+        "METHOD 2",
+        "52% TOTAL / 59% SPREAD",
+        method2,
+        "LIVE KAMBI DERIVED"
+      )}
+
+      ${createPanel(
+        "WAR ROOM",
+        "INDEPENDENT 1H MODEL",
+        warRoom,
+        "TEAM PERFORMANCE DATA"
+      )}
+
     </div>
 
-    <p>Verified Kambi 1H total: <strong>${actualLine}</strong></p>
-    <p>War Room model minus verified 1H line:
-       <strong>${difference}</strong></p>
-    <small style="color:#aab6c5">
-      Methods 1 and 2 are experimental estimates derived from
-      full-game market lines, not sportsbook 1H odds.
-      They do not automatically qualify a play.
-    </small>
+    <div style="
+      text-align:center;
+      background:#19283a;
+      padding:12px;
+      border-radius:8px;
+      color:#c5d8ed;
+      font-size:13px;
+      margin-bottom:10px;
+    ">
+      ${kambiStatus}
+    </div>
+
+    <div style="
+      text-align:center;
+      color:#ffc533;
+      font-weight:bold;
+      margin-bottom:10px;
+    ">
+      VERIFIED KAMBI 1H TOTAL:
+      ${verifiedHalfText}
+    </div>
+
+    <div style="
+      text-align:center;
+      color:#a9c3df;
+      font-size:12px;
+    ">
+      Methods 1 and 2 are experimental market-derived
+      estimates. They do not modify PROVE IT qualifications,
+      rankings, or saved records.
+    </div>
+
   `;
 }
+
 
 /* =========================================================
    LOAD LOCAL WAR ROOM DATA
