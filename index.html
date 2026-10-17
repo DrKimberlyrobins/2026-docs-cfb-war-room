@@ -4925,6 +4925,66 @@ function populateEventKambiMarkets(
       homeTeamTotal.underPrice;
 
   }
+  
+  /*
+    FIRST HALF SPREAD — VERIFIED KAMBI
+    Do not substitute full-game spread.
+  */
+
+  const firstHalfSpreadOffer =
+    chooseStrictEventOffer(
+      offers.filter(offer => {
+
+        const criterion = eventCriterionText(offer);
+        const lifetime = kambiLifetime(offer);
+
+        const isFirstHalf =
+          criterion.includes("1st half") ||
+          criterion.includes("first half") ||
+          lifetime.includes("FIRST_HALF") ||
+          lifetime.includes("1ST_HALF");
+
+        const isSpread =
+          criterion.includes("point spread") ||
+          criterion.includes("handicap");
+
+        return isFirstHalf && isSpread;
+      })
+    );
+
+  if (firstHalfSpreadOffer) {
+
+    const awayOutcome = findOutcomeByTeam(
+      firstHalfSpreadOffer,
+      awayName
+    );
+
+    const homeOutcome = findOutcomeByTeam(
+      firstHalfSpreadOffer,
+      homeName
+    );
+
+    if (awayOutcome && homeOutcome) {
+
+      const awayLine = kambiLineToNumber(
+        awayOutcome.line
+      );
+
+      const homeLine = kambiLineToNumber(
+        homeOutcome.line
+      );
+
+      if (
+        Number.isFinite(awayLine) &&
+        Number.isFinite(homeLine) &&
+        Math.abs(awayLine + homeLine) < 0.01
+      ) {
+        marketBoardLines.firstHalf.spreadAway = awayLine;
+        marketBoardLines.firstHalf.spreadHome = homeLine;
+      }
+    }
+  }
+
 
   /*
     FIRST HALF TOTAL
@@ -5882,8 +5942,24 @@ function updateHalftimeIntelligence() {
       font-weight:bold;
       margin-bottom:10px;
     ">
-      VERIFIED KAMBI 1H TOTAL:
+      
+VERIFIED KAMBI 1H TOTAL:
       ${verifiedHalfText}
+
+      <div style="margin-top:8px">
+        VERIFIED KAMBI 1H SPREAD:
+        ${
+          validNumber(marketBoardLines.firstHalf.spreadAway) !== null &&
+          validNumber(marketBoardLines.firstHalf.spreadHome) !== null
+            ? `${escapeHTML(awayName)} ${
+                formatMarketLine(marketBoardLines.firstHalf.spreadAway)
+              } | ${escapeHTML(homeName)} ${
+                formatMarketLine(marketBoardLines.firstHalf.spreadHome)
+              }`
+            : "NOT AVAILABLE"
+        }
+      </div>
+
     </div>
 
     <div style="
