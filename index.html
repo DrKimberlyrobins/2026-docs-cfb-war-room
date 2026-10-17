@@ -5946,19 +5946,6 @@ function updateHalftimeIntelligence() {
 VERIFIED KAMBI 1H TOTAL:
       ${verifiedHalfText}
 
-      <div style="margin-top:8px">
-        VERIFIED KAMBI 1H SPREAD:
-        ${
-          validNumber(marketBoardLines.firstHalf.spreadAway) !== null &&
-          validNumber(marketBoardLines.firstHalf.spreadHome) !== null
-            ? `${escapeHTML(awayName)} ${
-                formatMarketLine(marketBoardLines.firstHalf.spreadAway)
-              } | ${escapeHTML(homeName)} ${
-                formatMarketLine(marketBoardLines.firstHalf.spreadHome)
-              }`
-            : "NOT AVAILABLE"
-        }
-      </div>
 
     </div>
 
