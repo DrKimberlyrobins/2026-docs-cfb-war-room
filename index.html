@@ -7681,6 +7681,217 @@ document
 /* =========================================================
    END PROVE IT RECORDS
 ========================================================= */
+
+/* =========================================================
+   SAVE HALFTIME INTELLIGENCE TO GOOGLE SHEETS
+   Independent of PROVE IT save button
+========================================================= */
+
+async function saveHalftimeIntelligence() {
+
+  const button = document.getElementById(
+    "saveHalftimeButton"
+  );
+
+  const status = document.getElementById(
+    "saveHalftimeStatus"
+  );
+
+  const awayName = document.getElementById(
+    "awayTeam"
+  )?.value || "";
+
+  const homeName = document.getElementById(
+    "homeTeam"
+  )?.value || "";
+
+  const numberOrBlank = value => {
+    if (value === null || value === undefined || value === "") {
+      return "";
+    }
+    const number = Number(value);
+    return Number.isFinite(number) ? number : "";
+  };
+
+  const round2 = value =>
+    Math.round((value + Number.EPSILON) * 100) / 100;
+
+  if (!awayName || !homeName || awayName === homeName) {
+    status.textContent = "Select two different teams first.";
+    return;
+  }
+
+  const fullTotal = numberOrBlank(
+    marketBoardLines.gameTotal.line
+  );
+
+  const awaySpread = numberOrBlank(
+    marketBoardLines.spread.awayLine
+  );
+
+  const homeSpread = numberOrBlank(
+    marketBoardLines.spread.homeLine
+  );
+
+  const selectedHomeSpread =
+    homeSpread !== ""
+      ? homeSpread
+      : awaySpread !== ""
+        ? -awaySpread
+        : "";
+
+  function calculateMethod(totalPercent, spreadPercent) {
+
+    if (
+      fullTotal === "" ||
+      fullTotal <= 0 ||
+      selectedHomeSpread === ""
+    ) return null;
+
+    const total = round2(fullTotal * totalPercent);
+    const margin = round2(
+      Math.abs(selectedHomeSpread) * spreadPercent
+    );
+
+    const favorite = round2((total + margin) / 2);
+    const underdog = round2((total - margin) / 2);
+
+    let away;
+    let home;
+
+    if (selectedHomeSpread < 0) {
+      away = underdog;
+      home = favorite;
+    } else if (selectedHomeSpread > 0) {
+      away = favorite;
+      home = underdog;
+    } else {
+      away = round2(total / 2);
+      home = round2(total / 2);
+    }
+
+    return {
+      away,
+      home,
+      total,
+      homeSpread: round2(away - home)
+    };
+  }
+
+  const method1 = calculateMethod(0.50, 0.47);
+  const method2 = calculateMethod(0.52, 0.59);
+
+  const model = marketBoardProjection.h1;
+
+  const warRoom =
+    numberOrBlank(model.away) !== "" &&
+    numberOrBlank(model.home) !== ""
+      ? {
+          away: numberOrBlank(model.away),
+          home: numberOrBlank(model.home),
+          total: numberOrBlank(model.total),
+          homeSpread: round2(model.away - model.home)
+        }
+      : null;
+
+  if (!method1 && !method2 && !warRoom) {
+    status.textContent = "No halftime projections available to save.";
+    return;
+  }
+
+  const kambiTotal = numberOrBlank(
+    marketBoardLines.firstHalf.total
+  );
+
+  const kambiAwaySpread = numberOrBlank(
+    marketBoardLines.firstHalf.spreadAway
+  );
+
+  const kambiHomeSpread = numberOrBlank(
+    marketBoardLines.firstHalf.spreadHome
+  );
+
+  const difference = (projection, line) =>
+    projection === "" || line === ""
+      ? ""
+      : round2(projection - line);
+
+  const value = (modelData, key) =>
+    modelData ? numberOrBlank(modelData[key]) : "";
+
+  const now = new Date();
+
+  const record = {
+    type: "halftime",
+    gameId: String(currentRecordsEventId || (
+      normalizeTeamName(awayName) + "-" +
+      normalizeTeamName(homeName) + "-" +
+      now.toISOString().slice(0, 10)
+    )),
+    date: now.toISOString().slice(0, 10),
+    awayTeam: awayName,
+    homeTeam: homeName,
+
+    kambiHalfTotal: kambiTotal,
+    kambiHalfAwaySpread: kambiAwaySpread,
+    kambiHalfHomeSpread: kambiHomeSpread,
+
+    method1Away: value(method1, "away"),
+    method1Home: value(method1, "home"),
+    method1Total: value(method1, "total"),
+    method1HomeSpread: value(method1, "homeSpread"),
+    method1TotalDifference: difference(
+      value(method1, "total"), kambiTotal
+    ),
+    method1SpreadDifference: difference(
+      value(method1, "homeSpread"), kambiHomeSpread
+    ),
+
+    method2Away: value(method2, "away"),
+    method2Home: value(method2, "home"),
+    method2Total: value(method2, "total"),
+    method2HomeSpread: value(method2, "homeSpread"),
+    method2TotalDifference: difference(
+      value(method2, "total"), kambiTotal
+    ),
+    method2SpreadDifference: difference(
+      value(method2, "homeSpread"), kambiHomeSpread
+    ),
+
+    warRoomAway: value(warRoom, "away"),
+    warRoomHome: value(warRoom, "home"),
+    warRoomTotal: value(warRoom, "total"),
+    warRoomHomeSpread: value(warRoom, "homeSpread"),
+    warRoomTotalDifference: difference(
+      value(warRoom, "total"), kambiTotal
+    ),
+    warRoomSpreadDifference: difference(
+      value(warRoom, "homeSpread"), kambiHomeSpread
+    ),
+
+    marketSource: "Kambi"
+  };
+
+  button.disabled = true;
+  button.textContent = "SENDING...";
+  status.textContent = "Sending halftime record to Google Sheets...";
+
+  try {
+    await sendCollegeRecord(record);
+
+    status.textContent =
+      "Request sent. Verify the new row in Halftime Intelligence Records.";
+
+    button.textContent = "SAVE HALFTIME INTELLIGENCE";
+  } catch (error) {
+    console.error("Halftime save error:", error);
+    status.textContent = "Send failed. Check the browser console.";
+    button.textContent = "RETRY HALFTIME SAVE";
+  } finally {
+    button.disabled = false;
+  }
+}
+  
 loadCFBData();
 
 </script>
