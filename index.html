@@ -5465,7 +5465,9 @@ async function updateMatchup() {
     awaySOS,
     homeSOS
   );
-
+  
+updateHalftimeIntelligence();
+  
   const loadedMarkets =
     countLoadedKambiMarkets();
 
@@ -5498,6 +5500,147 @@ async function updateMatchup() {
 
 }
 
+
+/* =========================================================
+   AUTOMATIC HALFTIME INTELLIGENCE
+   Independent estimates — not verified sportsbook 1H lines
+========================================================= */
+
+function updateHalftimeIntelligence() {
+  const target = document.getElementById(
+    "halftimeIntelligenceResults"
+  );
+  if (!target) return;
+
+  const awayName = document.getElementById("awayTeam")?.value;
+  const homeName = document.getElementById("homeTeam")?.value;
+
+  const valid = value =>
+    value !== null &&
+    value !== undefined &&
+    value !== "" &&
+    Number.isFinite(Number(value));
+
+  const number = value =>
+    valid(value) ? Number(value) : null;
+
+  const fmt = value =>
+    Number.isFinite(value) ? value.toFixed(1) : "—";
+
+  if (!awayName || !homeName || awayName === homeName) {
+    target.textContent = "Select two different teams.";
+    return;
+  }
+
+  const model = marketBoardProjection.h1;
+  const total = number(marketBoardLines.gameTotal.line);
+  const homeSpread = number(marketBoardLines.spread.homeLine);
+
+  const modelReady =
+    valid(model.away) && valid(model.home);
+
+  if (!modelReady && (total === null || homeSpread === null)) {
+    target.textContent =
+      "Waiting for verified matchup data and market lines.";
+    return;
+  }
+
+  function calculateMethod(totalRate, spreadRate) {
+    if (total === null || homeSpread === null) return null;
+
+    const halfTotal = total * totalRate;
+    const halfMargin = Math.abs(homeSpread) * spreadRate;
+
+    // Negative home spread means home is favored.
+    const homeFavorite = homeSpread < 0;
+    const awayFavorite = homeSpread > 0;
+
+    const favoriteScore = (halfTotal + halfMargin) / 2;
+    const underdogScore = (halfTotal - halfMargin) / 2;
+
+    return {
+      away: awayFavorite ? favoriteScore :
+            homeFavorite ? underdogScore : halfTotal / 2,
+      home: homeFavorite ? favoriteScore :
+            awayFavorite ? underdogScore : halfTotal / 2,
+      total: halfTotal,
+      margin: halfMargin
+    };
+  }
+
+  const method1 = calculateMethod(0.50, 0.47);
+  const method2 = calculateMethod(0.52, 0.59);
+
+  function row(label, result) {
+    if (!result) {
+      return `<tr><td>${label}</td>
+        <td colspan="4">Verified full-game spread and total required</td>
+      </tr>`;
+    }
+
+    return `<tr>
+      <td>${label}</td>
+      <td>${fmt(result.away)}</td>
+      <td>${fmt(result.home)}</td>
+      <td>${fmt(result.total)}</td>
+      <td>${fmt(result.margin)}</td>
+    </tr>`;
+  }
+
+  const modelRow = modelReady
+    ? row("WAR ROOM 1H MODEL", {
+        away: Number(model.away),
+        home: Number(model.home),
+        total: Number(model.total),
+        margin: Number(model.margin)
+      })
+    : `<tr><td>WAR ROOM 1H MODEL</td>
+       <td colspan="4">Projection unavailable</td></tr>`;
+
+  const actual1H = number(marketBoardLines.firstHalf.total);
+
+  const actualLine = actual1H === null
+    ? "NO VERIFIED 1H TOTAL"
+    : fmt(actual1H);
+
+  const difference = modelReady && actual1H !== null
+    ? fmt(Number(model.total) - actual1H)
+    : "—";
+
+  target.innerHTML = `
+    <div style="font-weight:bold;color:#f5c542;margin-bottom:12px">
+      ${awayName} @ ${homeName}
+    </div>
+
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;text-align:center">
+        <thead>
+          <tr style="color:#f5c542">
+            <th>METHOD</th>
+            <th>AWAY</th>
+            <th>HOME</th>
+            <th>1H TOTAL</th>
+            <th>MARGIN</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${modelRow}
+          ${row("METHOD 1 (50% / 47%)", method1)}
+          ${row("METHOD 2 (52% / 59%)", method2)}
+        </tbody>
+      </table>
+    </div>
+
+    <p>Verified Kambi 1H total: <strong>${actualLine}</strong></p>
+    <p>War Room model minus verified 1H line:
+       <strong>${difference}</strong></p>
+    <small style="color:#aab6c5">
+      Methods 1 and 2 are experimental estimates derived from
+      full-game market lines, not sportsbook 1H odds.
+      They do not automatically qualify a play.
+    </small>
+  `;
+}
 
 /* =========================================================
    LOAD LOCAL WAR ROOM DATA
