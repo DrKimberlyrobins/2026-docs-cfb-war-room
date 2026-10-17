@@ -540,11 +540,40 @@ select {
 <!-- AUTOMATIC HALFTIME INTELLIGENCE -->
 <div id="halftimeIntelligence" class="prediction-engine">
   <h2>HALFTIME INTELLIGENCE CALCULATOR</h2>
+
   <div class="engine-subtitle">
     Automatic matchup and market analysis
   </div>
+
   <div id="halftimeIntelligenceResults" class="status">
     Waiting for matchup and verified market data...
+  </div>
+
+  <div style="text-align:center; margin-top:18px;">
+    <button
+      id="saveHalftimeButton"
+      type="button"
+      onclick="saveHalftimeIntelligence()"
+      style="
+        padding:14px 28px;
+        border:none;
+        border-radius:10px;
+        font-size:16px;
+        font-weight:800;
+        cursor:pointer;
+        background:#f5c542;
+        color:#07111f;
+      "
+    >
+      SAVE HALFTIME INTELLIGENCE
+    </button>
+
+    <div
+      id="saveHalftimeStatus"
+      style="margin-top:10px;color:#aab6c5;font-size:13px;"
+    >
+      Select a matchup to save halftime projections.
+    </div>
   </div>
 </div>
 
