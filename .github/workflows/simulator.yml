@@ -1,0 +1,76 @@
+name: CFB Simulator and Pregame Receipts
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/simulate.py
+      - tests/test_simulator.py
+      - .github/workflows/simulator.yml
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_run:
+    workflows: ['Update 2026 CFB Data']
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cfb-simulator
+  cancel-in-progress: false
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.3.5
+      - name: Test simulation and receipt rules
+        run: python -m unittest discover -s tests -v
+      - name: Refresh completed scores and schedule
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          test -n "$CFBD_API_KEY" || { echo 'CFBD_API_KEY is missing'; exit 1; }
+          curl --fail --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer $CFBD_API_KEY" \
+            'https://api.collegefootballdata.com/games?year=2026&seasonType=regular' \
+            -o /tmp/cfb-games.json
+          python -c "import json; d=json.load(open('/tmp/cfb-games.json')); assert isinstance(d,list) and len(d)>0"
+          cp /tmp/cfb-games.json data/games-2026.json
+      - name: Fetch player boxes, simulate, preserve pregame receipts, grade finals
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: python scripts/simulate.py --fetch-players
+      - name: Commit forecasts and receipts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/games-2026.json data/player-boxes data/simulator
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh CFB simulations, pregame receipts and grades'
+            git pull --rebase origin main
+            git push
+          fi
+      - name: Publish GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+  deploy:
+    needs: simulate
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy simulator and room
+        id: deployment
+        uses: actions/deploy-pages@v4
