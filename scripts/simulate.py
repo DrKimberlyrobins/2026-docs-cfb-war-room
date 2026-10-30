@@ -18,7 +18,7 @@ from functools import lru_cache
 
 import numpy as np
 
-VERSION = 'cfb-empirical-v1.0'
+VERSION = 'cfb-empirical-v1.0.1'
 RUNS = 10000
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -208,6 +208,8 @@ def parse_players(boxes):
                     label = typ['name'].upper().strip()
                     field = STAT_MAP[category].get(label)
                     for athlete in typ.get('athletes', []):
+                        if athlete.get('name', '').strip().lower() in ('team', 'team stats', 'totals', ''):
+                            continue  # Kneel-down/team totals are not individual athletes.
                         key = (str(box['id']), team['team'], str(athlete['id']))
                         row = records.setdefault(key, {'name': athlete['name'], 'stats': {}})
                         try:

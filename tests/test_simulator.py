@@ -66,6 +66,8 @@ class SimulatorTests(unittest.TestCase):
         self.assertEqual(len(players),1)
         self.assertEqual(players[0]['sampleGames'],1)
         self.assertEqual(players[0]['stats']['passYards']['mean'],225)
+        boxes[0]['teams'][0]['categories'][0]['types'][0]['athletes'].append({'id':'0','name':'Team','stat':'0/0'})
+        self.assertEqual(len(sim.parse_players(boxes)),1)
 
     def test_missing_score_not_a_zero(self):
         g=copy.deepcopy(self.games[0]);g['awayPoints']=None
