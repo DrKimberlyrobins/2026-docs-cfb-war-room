@@ -15,7 +15,7 @@
   const ct = value => new Date(value).toLocaleString('en-US', {timeZone:'America/Chicago',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' CT';
   const day = value => new Intl.DateTimeFormat('en-CA', {timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
   let data, selected;
-  root.innerHTML = '<div class="sim-eyebrow">DOC’S SIMULATION LAB</div><h2>10,000 games. One saved forecast.</h2><p id="simStatus" role="status">Loading saved simulations…</p><div class="sim-controls"><label>Game date (Central)<input type="date" id="simDate"></label><label>Scheduled matchup<select id="simGame"><option>Loading…</option></select></label></div><div id="simBody"></div><details><summary>Method, data, and accuracy record</summary><div id="simMethod"></div></details>';
+  root.innerHTML = '<div class="sim-eyebrow">DOC’S DAILY GAME PROJECTIONS</div><h2>Every game. Winner, spread, total.</h2><p id="simStatus" role="status">Loading saved projections…</p><div class="sim-controls"><label>Game date (Central)<input type="date" id="simDate"></label><label>Board period<select id="simPeriod"><option value="full">Full game + OT</option><option value="h1">First half</option><option value="q1">First quarter</option></select></label><div class="sim-day-buttons"><button type="button" id="simToday">Today</button><button type="button" id="simTomorrow">Tomorrow</button></div></div><p id="simBoardCount"></p><div id="simBoard"></div><details id="simDetails"><summary>Matchup details and player projections</summary><label>Scheduled matchup<select id="simGame"><option>Loading…</option></select></label><div id="simBody"></div></details><details><summary>Method, data, and accuracy record</summary><div id="simMethod"></div></details>';
 
   function table(parent, headings, rows) {
     const wrap = el('div', undefined, parent, 'sim-scroll');
@@ -36,6 +36,45 @@
     return {win: win/count, push: push/count, lose: (count-win-push)/count};
   }
 
+  const signed = value => (value > 0 ? '+' : '') + Number(value.toFixed(1));
+  function board() {
+    const list=data.forecasts.filter(f=>day(f.kickoff)===$('simDate').value);
+    const period=$('simPeriod').value,periodName={full:'Full game + OT',h1:'First half',q1:'First quarter'}[period];
+    $('simBoard').replaceChildren();
+    $('simBoardCount').textContent=`${list.length} scheduled FBS games · ${periodName} · Listed by start time`;
+    if(!list.length){el('p','No saved projections for this date. Choose another date.', $('simBoard'));return;}
+    for(const f of list){
+      const card=el('article',undefined,$('simBoard'),'sim-game-card');
+      const header=el('div',undefined,card,'sim-game-heading');
+      el('h3',`${f.away} at ${f.home}`,header);
+      el('span',ct(f.kickoff)+(f.grade?' · FINAL':new Date(f.kickoff)<=new Date()?' · LOCKED':' · PREGAME'),header,'sim-muted');
+      const p=f.simulation.periods?.[period];
+      if(!p){el('p','Score history unavailable for this matchup.',card);continue;}
+      el('p',`PROJECTED SCORE  ${f.away} ${fmt(p.away.mean)} — ${f.home} ${fmt(p.home.mean)}`,card,'sim-score');
+      const grid=el('div',undefined,card,'sim-pick-grid');
+      const pick=(label,title,detail)=>{const cell=el('div',undefined,grid,'sim-pick');el('div',label,cell,'sim-pick-label');el('strong',title,cell,'sim-direction');el('div',detail,cell,'sim-muted');};
+      const dirs=f.directions?.[period];
+      const winner=dirs?.winner || {side:p.awayWin>p.homeWin?'away':p.homeWin>p.awayWin?'home':null,probability:Math.max(p.awayWin,p.homeWin)};
+      const winnerName=winner.team || (winner.side==='away'?f.away:winner.side==='home'?f.home:'Even projection');
+      pick('WINNING SIDE',winnerName,`${pct(winner.probability)} simulated win probability${p.tie?' · Tie '+pct(p.tie):''}`);
+      const fairHome=p.away.mean-p.home.mean;
+      const fairTeam=fairHome>0?f.away:fairHome<0?f.home:'Pick’em';
+      const fairSpread=fairHome===0?'Pick’em':`${fairTeam} ${signed(-Math.abs(fairHome))}`;
+      const s=dirs?.spread,t=dirs?.total;
+      if(s?.side)pick('SPREAD DIRECTION',`${s.team} ${signed(s.line)}`,`${pct(s.probability)} cover · Push ${pct(s.pushProbability)} · Model spread ${fairSpread}`);
+      else if(s)pick('SPREAD DIRECTION','Even projection',`Model spread ${fairSpread}`);
+      else pick('PROJECTED SPREAD',fairSpread,period==='full'?'Market spread unavailable':'Period market line not connected');
+      if(t?.side)pick('TOTAL DIRECTION',`${t.side.toUpperCase()} ${t.line}`,`${pct(t.probability)} simulated probability · Model total ${fmt(p.total.mean)} · Push ${pct(t.pushProbability)}`);
+      else if(t)pick('TOTAL DIRECTION','Even projection',`Model total ${fmt(p.total.mean)}`);
+      else pick('PROJECTED TOTAL',fmt(p.total.mean),period==='full'?'Market total unavailable':'Period market line not connected');
+      if(period==='full' && f.market)el('p',`Market: ${f.market.provider} via CFBD · Captured ${ct(f.market.fetchedAt)} · Model saved ${ct(f.generatedAt)}`,card,'sim-muted');
+      else el('p',`Model saved ${ct(f.generatedAt)} · Directions require a verified market line.`,card,'sim-muted');
+      if(f.grade?.marketResults && period==='full')el('p',Object.entries(f.grade.marketResults).map(([k,v])=>`${k}: ${v.toUpperCase()}`).join(' · '),card,'sim-muted');
+      const open=el('button','Game and player details',card);open.type='button';
+      open.addEventListener('click',()=>{$('simGame').value=String(f.gameId);show();$('simDetails').open=true;$('simDetails').scrollIntoView({behavior:'smooth',block:'start'});});
+    }
+  }
+
   function refreshGames() {
     const list = data.forecasts.filter(f => day(f.kickoff) === $('simDate').value);
     $('simGame').replaceChildren();
@@ -44,6 +83,7 @@
       option.value = String(f.gameId);
     }
     if (!list.length) el('option', 'No saved forecasts for this date', $('simGame'));
+    board();
     show();
   }
 
@@ -76,13 +116,13 @@
       }));
     el('p', 'Percentile ranges describe simulated outcomes; future coverage has not yet been established. Quarter and half wins exclude ties.', body, 'sim-muted');
 
-    el('h3', 'Compare a market line', body);
-    const controls = el('div', undefined, body, 'sim-controls');
+    const advanced=el('details',undefined,body);el('summary','Optional: compare a different market line',advanced);
+    const controls = el('div', undefined, advanced, 'sim-controls');
     const pl = el('label', 'Period', controls); const period = el('select', undefined, pl);
     for (const [value,label] of [['full','Full + OT'],['h1','First half'],['q1','First quarter']]) { const o=el('option',label,period);o.value=value; }
     const sl = el('label', `Away spread (${f.away})`, controls); const spread = el('input',undefined,sl); spread.type='number';spread.step='0.5';spread.placeholder='Example: -8.5';
     const tl = el('label', 'Game total', controls); const total = el('input',undefined,tl);total.type='number';total.step='0.5';total.placeholder='Example: 47.5';
-    const output = el('p', 'Enter a line to calculate its simulated probability.', body); output.setAttribute('aria-live','polite');
+    const output = el('p', 'Enter a line to calculate its simulated probability.', advanced); output.setAttribute('aria-live','polite');
     const calculate = () => {
       const p=f.simulation.periods[period.value], parts=[];
       if (spread.value !== '' && Number.isFinite(spread.valueAsNumber)) {const r=probability(p.marginHist,spread.valueAsNumber,'spread');parts.push(`${f.away} ${spread.valueAsNumber>=0?'+':''}${spread.valueAsNumber}: cover ${pct(r.win)}, push ${pct(r.push)}, opposite ${pct(r.lose)}`);}
@@ -91,7 +131,7 @@
     };
     [period,spread,total].forEach(n=>n.addEventListener('input',calculate));
     // Use only finite, already-loaded Kambi values matching the selected teams.
-    const sync = el('button','Use current War Room market lines',body);sync.type='button';
+    const sync = el('button','Use current War Room market lines',advanced);sync.type='button';
     sync.addEventListener('click',()=>{
       if ($('awayTeam').value !== f.away || $('homeTeam').value !== f.home) {output.textContent='Select this same matchup in the War Room before importing its lines.';return;}
       const lines=typeof marketBoardLines === 'undefined' ? null : marketBoardLines;
@@ -144,9 +184,13 @@
     const m=data.metrics;
     table(method,['Period','Graded games','Team score MAE','Total MAE','Winner accuracy','80% range coverage'],['q1','h1','full'].map(p=>{const r=m[p];return [p,r.games,r.games?r.scoreMAE:'Not established',r.games?r.totalMAE:'—',r.games&&r.winnerAccuracy!==null?pct(r.winnerAccuracy):'—',r.games?pct(r.rangeCoverage):'—'];}));
     if(Object.keys(m.players).length)table(method,['Player statistic','Graded forecasts','MAE'],Object.entries(m.players).map(([k,v])=>[k,v.forecasts,v.MAE]));
+    if(m.markets)table(method,['Market direction','Wins','Losses','Pushes','Hit rate'],Object.entries(m.markets).map(([k,v])=>[k,v.wins,v.losses,v.pushes,v.hitRate===null?'Not established':pct(v.hitRate)]));
     el('p','MAE = mean absolute error; smaller is better. Only forecasts saved before kickoff are graded. No historical reconstruction is counted as a live record.',method);
     const today=day(new Date());const dates=[...new Set(data.forecasts.map(f=>day(f.kickoff)))].sort();
     $('simDate').value=dates.includes(today)?today:dates.find(d=>d>=today)||dates.at(-1)||today;
+    $('simPeriod').addEventListener('change',board);
+    $('simToday').addEventListener('click',()=>{$('simDate').value=day(new Date());refreshGames();});
+    $('simTomorrow').addEventListener('click',()=>{const d=new Date();d.setDate(d.getDate()+1);$('simDate').value=day(d);refreshGames();});
     $('simDate').addEventListener('change',refreshGames);$('simGame').addEventListener('change',show);refreshGames();
   }).catch(err=>{$('simStatus').textContent=`Saved simulations could not be loaded (${err.message}). Check the CFB Simulator GitHub Action.`;});
   for(const id of ['awayTeam','homeTeam']) $(id).addEventListener('change',()=>{

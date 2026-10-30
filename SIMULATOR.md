@@ -3,6 +3,18 @@
 The Simulation Lab in `index.html` reads forecasts built by `scripts/simulate.py`.
 It does not replace or silently relabel the original scoring engine below it.
 
+The daily board lists every saved FBS matchup for the selected Central date.
+Full-game winning side, spread direction and over/under are calculated automatically.
+Market lines come from timestamped CFBD `/lines` snapshots; home spread is the
+canonical convention (negative means home favored). One provider supplies both
+spread and total, preferring a complete consensus snapshot when available.
+Spread and total directions select the side occurring more often in simulations;
+pushes are shown separately. An equal probability is shown as an even projection.
+These directions are not advertised as validated profitable plays. A missing
+market line is explicitly unavailable, while the model's spread and total remain
+visible. 1Q and 1H model projections do not fabricate unconnected period markets.
+Directions and captured lines are saved before kickoff and graded as win/loss/push.
+
 ## What runs
 
 * 10,000 deterministic seeded draws for each scheduled FBS matchup in the next seven days.

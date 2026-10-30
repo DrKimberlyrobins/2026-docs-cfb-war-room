@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - scripts/simulate.py
+      - scripts/markets.py
+      - tests/test_markets.py
       - tests/test_simulator.py
       - .github/workflows/simulator.yml
   schedule:

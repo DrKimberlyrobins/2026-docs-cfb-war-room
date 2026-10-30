@@ -15,10 +15,13 @@ from pathlib import Path
 import urllib.parse
 import urllib.request
 from functools import lru_cache
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from markets import refresh_lines, choose_market, directions, grade_directions
 
 import numpy as np
 
-VERSION = 'cfb-empirical-v1.0.1'
+VERSION = 'cfb-empirical-v1.1'
 RUNS = 10000
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -296,6 +299,7 @@ def grade(forecast, actual, player_records):
     if date(forecast['generatedAt']) >= date(actual['startDate']):
         return None  # Never grade forecasts made after kickoff as pregame predictions.
     out = {'gameId': actual['id'], 'forecastAt': forecast['generatedAt'], 'periods': {}, 'players': []}
+    out['marketResults']=grade_directions(forecast,actual)
     if forecast['simulation'].get('status') == 'ready':
         for p, n in [('q1', 1), ('h1', 2), ('full', 4)]:
             if p != 'full' and not has_quarters(actual):
@@ -341,6 +345,12 @@ def metrics(grades):
         for p in g['players']:
             grouped[p['stat']].append(abs(p['error']))
     output['players'] = {k: {'forecasts': len(v), 'MAE': round(float(np.mean(v)),2)} for k,v in grouped.items()}
+    output['markets']={}
+    for key in ('winner','spread','total'):
+        results=[g.get('marketResults',{}).get(key) for g in grades]
+        wins=results.count('win'); losses=results.count('loss'); pushes=results.count('push')
+        output['markets'][key]={'wins':wins,'losses':losses,'pushes':pushes,
+                                'hitRate':round(wins/(wins+losses),4) if wins+losses else None}
     return output
 
 
@@ -365,13 +375,17 @@ def build(now, data_dir, fetch_players=False):
     eligible = [g for g in games if not g.get('completed') and not g.get('startTimeTBD')
                 and now < date(g['startDate']) <= now + timedelta(days=7)
                 and (g.get('homeClassification') == 'fbs' or g.get('awayClassification') == 'fbs')]
+    markets,market_issues=refresh_lines(eligible,now,data_dir,fetch_players)
+    issues.extend(market_issues)
     for g in eligible:
         path = receipt_dir / f"{g['id']}.json"
         previous = load(path, {})
         if previous and (previous.get('grade') or date(previous['latest']['kickoff']) <= now):
             continue
         histories = [x for x in games if completed(x, now) and has_quarters(x)]
-        fingerprint = digest([VERSION, g, histories, sorted((list(k),v) for k,v in pre_records.items())])
+        lines=markets.get(str(g['id']),[])
+        market=choose_market(lines)
+        fingerprint = digest([VERSION, g, histories, sorted((list(k),v) for k,v in pre_records.items()),market])
         if previous.get('latest', {}).get('inputHash') == fingerprint:
             continue
         forecast = {'gameId': g['id'], 'away': g['awayTeam'], 'home': g['homeTeam'],
@@ -381,6 +395,9 @@ def build(now, data_dir, fetch_players=False):
                     'simulation': simulate_game(g, games, now),
                     'players': simulate_players(g, games, pre_records, now),
                     'playerMethod': 'Separate recency-weighted empirical workload baseline; not opponent-adjusted or lineup-confirmed.'}
+        forecast['market']=market
+        forecast['availableMarkets']=lines
+        forecast['directions']=directions(forecast['simulation'],g['awayTeam'],g['homeTeam'],market)
         receipt = {'first': previous.get('first', forecast), 'latest': forecast,
                    'revisions': previous.get('revisions', 0) + 1}
         save(path, receipt)
