@@ -56,6 +56,12 @@
     }
     const f = selected;
     el('h3', `${f.away} at ${f.home}`, body);
+    const openMatchup=el('button','Open this matchup in the War Room below',body);openMatchup.type='button';
+    openMatchup.addEventListener('click',()=>{
+      const away=$('awayTeam'),home=$('homeTeam');
+      if(!Array.from(away.options).some(o=>o.value===f.away)||!Array.from(home.options).some(o=>o.value===f.home))return;
+      away.value=f.away;home.value=f.home;home.dispatchEvent(new Event('change',{bubbles:true}));
+    });
     el('p', `Saved ${ct(f.generatedAt)} · First receipt ${ct(f.firstSavedAt)} · ${f.modelVersion}`, body, 'sim-muted');
     el('p', `${new Date(f.kickoff) > new Date() ? 'PREGAME' : f.grade ? 'FINAL — GRADED' : 'LOCKED AT KICKOFF — AWAITING FINAL'} · ${f.neutralSite ? 'Neutral site' : 'Home/away adjusted'} · Input ${f.inputHash.slice(0,12)}`, body, 'sim-badge');
     if (f.simulation.status !== 'ready') {
@@ -143,4 +149,10 @@
     $('simDate').value=dates.includes(today)?today:dates.find(d=>d>=today)||dates.at(-1)||today;
     $('simDate').addEventListener('change',refreshGames);$('simGame').addEventListener('change',show);refreshGames();
   }).catch(err=>{$('simStatus').textContent=`Saved simulations could not be loaded (${err.message}). Check the CFB Simulator GitHub Action.`;});
+  for(const id of ['awayTeam','homeTeam']) $(id).addEventListener('change',()=>{
+    if(!data)return;
+    const f=data.forecasts.find(f=>f.away===$('awayTeam').value&&f.home===$('homeTeam').value);
+    if(!f)return;
+    $('simDate').value=day(f.kickoff);refreshGames();$('simGame').value=String(f.gameId);show();
+  });
 })();
