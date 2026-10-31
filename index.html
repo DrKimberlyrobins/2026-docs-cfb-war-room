@@ -7942,5 +7942,68 @@ loadCFBData();
   refresh();
 })();
 </script>
+<!-- PASSING ACCURACY ADVANTAGE: independently stored verified team passing totals -->
+<section id="passingAccuracyPanel" style="max-width:980px;margin:20px auto;padding:18px;background:#13263a;color:#fff;border:1px solid #46617b;border-radius:12px;font-family:Arial,sans-serif">
+<h2 style="margin:0 0 8px;color:#55e4a4">PASSING ACCURACY ADVANTAGE</h2>
+<p style="margin:0 0 12px">Season completions ÷ attempts. A team qualifies only when its completion rate exceeds its opponent by at least <strong>7.0 percentage points</strong>. Enter verified season totals; missing data is never estimated.</p>
+<div id="paTeams" style="font-weight:bold;margin-bottom:12px">Select both teams above.</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+<label>AWAY completions<input id="paAwayComp" type="number" min="0" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
+<label>AWAY attempts<input id="paAwayAtt" type="number" min="1" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
+<label>HOME completions<input id="paHomeComp" type="number" min="0" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
+<label>HOME attempts<input id="paHomeAtt" type="number" min="1" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
+</div>
+<div id="paVerdict" aria-live="polite" style="margin-top:12px;font-size:17px">Awaiting verified completion totals.</div>
+<small style="display:block;margin-top:10px">Numbers entered here are saved in this browser per team. They are not automatically fetched or verified by the War Room; update them when new games are played.</small>
+</section>
+<script>
+(function(){
+ const away=document.getElementById('awayTeam')||document.getElementById('away');
+ const home=document.getElementById('homeTeam')||document.getElementById('home');
+ const $=id=>document.getElementById(id);
+ if(!away||!home)return;
+ const ids=['paAwayComp','paAwayAtt','paHomeComp','paHomeAtt'];
+ const key=name=>'docs-passing-accuracy-v1:'+name.trim().toLowerCase();
+ const team=sel=>sel.options[sel.selectedIndex]?.textContent?.trim()||'';
+ function read(name){try{return JSON.parse(localStorage.getItem(key(name)))||{}}catch{return {}}}
+ function valid(c,a){return Number.isInteger(c)&&Number.isInteger(a)&&a>0&&c>=0&&c<=a}
+ function calc(){
+  const a=team(away),h=team(home);
+  $('paTeams').textContent=(a||'Select away team')+' vs '+(h||'Select home team');
+  const vals=ids.map(id=>$(id).value.trim()===''?null:Number($(id).value));
+  const [ac,aa,hc,ha]=vals;
+  const box=$('paVerdict');
+  box.style.color='#fff';
+  if(!a||!h||!valid(ac,aa)||!valid(hc,ha)){
+   box.textContent='NO VERIFIED COMPARISON — enter valid completions and attempts for both teams.';
+   return;
+  }
+  const ap=100*ac/aa,hp=100*hc/ha,diff=Math.abs(ap-hp);
+  const winner=ap>hp?a:hp>ap?h:'Tied';
+  box.style.color=diff>=7?'#55e4a4':'#fff';
+  box.textContent=a+': '+ap.toFixed(2)+'%  |  '+h+': '+hp.toFixed(2)+'%  |  '+winner+' +'+diff.toFixed(2)+' points — '+(diff>=7?'QUALIFIES (7+ POINTS)':'DOES NOT QUALIFY');
+ }
+ function sync(){
+  const a=read(team(away)),h=read(team(home));
+  $('paAwayComp').value=a.c??'';$('paAwayAtt').value=a.a??'';
+  $('paHomeComp').value=h.c??'';$('paHomeAtt').value=h.a??'';
+  calc();
+ }
+ [away,home].forEach(s=>s.addEventListener('change',sync));
+ ids.forEach(id=>$(id).addEventListener('input',()=>{
+  const a=team(away),h=team(home);
+  if(a&&$('paAwayComp').value!==''&&$('paAwayAtt').value!==''){
+   const c=Number($('paAwayComp').value),at=Number($('paAwayAtt').value);
+   if(valid(c,at))try{localStorage.setItem(key(a),JSON.stringify({c,a:at}))}catch{}
+  }
+  if(h&&$('paHomeComp').value!==''&&$('paHomeAtt').value!==''){
+   const c=Number($('paHomeComp').value),at=Number($('paHomeAtt').value);
+   if(valid(c,at))try{localStorage.setItem(key(h),JSON.stringify({c,a:at}))}catch{}
+  }
+  calc();
+ }));
+ sync();
+})();
+</script>
 </body>
 </html>  
