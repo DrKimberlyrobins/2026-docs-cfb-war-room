@@ -7962,7 +7962,7 @@ date.value=get('year')+'-'+get('month')+'-'+get('day');
 const json=async url=>{const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function totals(d){
- const categories=d?.results?.stats?.categories||d?.stats?.categories||d?.splits?.categories||[];
+ const categories=d?.splits?.categories||d?.results?.stats?.categories||d?.stats?.categories||[];
  for(const cat of categories){
   const ss=cat.stats||[];
   const find=names=>ss.find(x=>names.includes(norm(x.name))||names.includes(norm(x.abbreviation)));
@@ -7974,7 +7974,13 @@ function totals(d){
 }
 async function stats(id){
  if(!id)return null;
- if(!cache.has(id))cache.set(id,json(base+'teams/'+encodeURIComponent(id)+'/statistics?season=2026').then(totals).catch(()=>null));
+ if(!cache.has(id))cache.set(id,(async()=>{
+ const year=Number(date.value.slice(0,4))||new Date().getFullYear();
+ const core='https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/'+year+'/types/2/teams/'+encodeURIComponent(id)+'/statistics';
+ const urls=[core,core+'/0',base+'teams/'+encodeURIComponent(id)+'/statistics?season='+year];
+ for(const url of urls){try{const found=totals(await json(url));if(found)return found}catch(e){console.debug('Passing statistics source unavailable',url,e)}}
+ return null;
+})());
  return cache.get(id);
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
