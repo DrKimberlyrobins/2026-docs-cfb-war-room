@@ -387,6 +387,12 @@ select {
 
     <div class="matchup-title">SELECT MATCHUP</div>
 
+    <div style="margin:0 0 18px">
+      <label for="gameSearch" style="display:block;margin-bottom:8px;color:#aab6c5">Search team or matchup</label>
+      <input id="gameSearch" type="search" list="cfbTeamSuggestions" placeholder="Type a team name (e.g., Southern Miss)" autocomplete="off" style="width:100%;padding:14px;border:1px solid #34495e;border-radius:10px;background:#07111f;color:white;font-size:16px">
+      <datalist id="cfbTeamSuggestions"></datalist>
+      <div id="gameSearchFeedback" role="status" style="color:#aab6c5;font-size:13px;margin-top:6px">Type to find a team in the matchup selectors below.</div>
+    </div>
     <div class="team-selectors">
 
       <div class="team-box">
@@ -7899,5 +7905,42 @@ loadCFBData();
 
 </script>
 <script src="simulator.js?v=1.1"></script>
+<script>
+(function(){
+  const input=document.getElementById('gameSearch');
+  const list=document.getElementById('cfbTeamSuggestions');
+  const feedback=document.getElementById('gameSearchFeedback');
+  const selectors=['awayTeam','homeTeam'].map(id=>document.getElementById(id)).filter(Boolean);
+  function options(){return selectors.flatMap(select=>Array.from(select.options).filter(o=>o.value).map(o=>({select,option:o})))}
+  function refresh(){
+    const unique=new Set();
+    list.replaceChildren();
+    for(const {option} of options()){
+      if(unique.has(option.textContent))continue;
+      unique.add(option.textContent);
+      const suggestion=document.createElement('option');
+      suggestion.value=option.textContent;
+      list.appendChild(suggestion);
+    }
+  }
+  function find(){
+    const query=input.value.trim().toLowerCase();
+    if(!query){feedback.textContent='Type to find a team in the matchup selectors below.';return}
+    const matches=options().filter(({option})=>option.textContent.toLowerCase().includes(query));
+    if(matches.length===1){
+      const {select,option}=matches[0];
+      select.value=option.value;
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+      feedback.textContent='Selected '+option.textContent+'. Choose the opponent to complete the matchup.';
+    }else{
+      feedback.textContent=matches.length?matches.length+' matching team entries. Keep typing or select a suggestion.':'No matching team in the loaded team list.';
+    }
+  }
+  input.addEventListener('input',find);
+  const observer=new MutationObserver(()=>refresh());
+  selectors.forEach(select=>observer.observe(select,{childList:true}));
+  refresh();
+})();
+</script>
 </body>
 </html>  
