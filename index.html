@@ -7942,68 +7942,69 @@ loadCFBData();
   refresh();
 })();
 </script>
-<!-- PASSING ACCURACY ADVANTAGE: independently stored verified team passing totals -->
+<!-- Passing accuracy: automatic source-only comparison; never request manual input. -->
 <section id="passingAccuracyPanel" style="max-width:980px;margin:20px auto;padding:18px;background:#13263a;color:#fff;border:1px solid #46617b;border-radius:12px;font-family:Arial,sans-serif">
 <h2 style="margin:0 0 8px;color:#55e4a4">PASSING ACCURACY ADVANTAGE</h2>
-<p style="margin:0 0 12px">Season completions ÷ attempts. A team qualifies only when its completion rate exceeds its opponent by at least <strong>7.0 percentage points</strong>. Enter verified season totals; missing data is never estimated.</p>
-<div id="paTeams" style="font-weight:bold;margin-bottom:12px">Select both teams above.</div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
-<label>AWAY completions<input id="paAwayComp" type="number" min="0" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
-<label>AWAY attempts<input id="paAwayAtt" type="number" min="1" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
-<label>HOME completions<input id="paHomeComp" type="number" min="0" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
-<label>HOME attempts<input id="paHomeAtt" type="number" min="1" step="1" style="display:block;width:100%;padding:9px;margin-top:5px"></label>
-</div>
-<div id="paVerdict" aria-live="polite" style="margin-top:12px;font-size:17px">Awaiting verified completion totals.</div>
-<small style="display:block;margin-top:10px">Numbers entered here are saved in this browser per team. They are not automatically fetched or verified by the War Room; update them when new games are played.</small>
+<div id="paTeams">Select a matchup above.</div>
+<div id="paVerdict" aria-live="polite" style="margin-top:12px">Loading season passing statistics…</div>
+<small style="display:block;margin-top:10px">Season completions ÷ attempts; green indicates a difference of at least 7.0 percentage points. Source: ESPN team season statistics. Unavailable data is not estimated.</small>
 </section>
 <script>
 (function(){
- const away=document.getElementById('awayTeam')||document.getElementById('away');
- const home=document.getElementById('homeTeam')||document.getElementById('home');
- const $=id=>document.getElementById(id);
- if(!away||!home)return;
- const ids=['paAwayComp','paAwayAtt','paHomeComp','paHomeAtt'];
- const key=name=>'docs-passing-accuracy-v1:'+name.trim().toLowerCase();
- const team=sel=>sel.options[sel.selectedIndex]?.textContent?.trim()||'';
- function read(name){try{return JSON.parse(localStorage.getItem(key(name)))||{}}catch{return {}}}
- function valid(c,a){return Number.isInteger(c)&&Number.isInteger(a)&&a>0&&c>=0&&c<=a}
- function calc(){
-  const a=team(away),h=team(home);
-  $('paTeams').textContent=(a||'Select away team')+' vs '+(h||'Select home team');
-  const vals=ids.map(id=>$(id).value.trim()===''?null:Number($(id).value));
-  const [ac,aa,hc,ha]=vals;
-  const box=$('paVerdict');
-  box.style.color='#fff';
-  if(!a||!h||!valid(ac,aa)||!valid(hc,ha)){
-   box.textContent='NO VERIFIED COMPARISON — enter valid completions and attempts for both teams.';
-   return;
+const away=document.getElementById('awayTeam')||document.getElementById('away');
+const home=document.getElementById('homeTeam')||document.getElementById('home');
+if(!away||!home)return;
+const out=document.getElementById('paVerdict'),label=document.getElementById('paTeams');
+const endpoint='https://site.api.espn.com/apis/site/v2/sports/football/college-football/';
+const cache=new Map();
+const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function selected(s){return s.options[s.selectedIndex]?.textContent?.trim()||''}
+function parseStats(data){
+ const categories=data?.results?.stats?.categories||data?.stats?.categories||data?.splits?.categories||[];
+ for(const c of categories){
+  const stats=c.stats||[];
+  const find=(...names)=>stats.find(x=>names.includes(String(x.name||x.abbreviation||'').toLowerCase()));
+  const completions=find('completions','passingcompletions','cmp');
+  const attempts=find('passingattempts','passattempts','att');
+  if(completions&&attempts){
+   const co=Number(completions.value??completions.displayValue),at=Number(attempts.value??attempts.displayValue);
+   if(Number.isFinite(co)&&Number.isFinite(at)&&at>0&&co<=at)return {co,at};
   }
-  const ap=100*ac/aa,hp=100*hc/ha,diff=Math.abs(ap-hp);
-  const winner=ap>hp?a:hp>ap?h:'Tied';
-  box.style.color=diff>=7?'#55e4a4':'#fff';
-  box.textContent=a+': '+ap.toFixed(2)+'%  |  '+h+': '+hp.toFixed(2)+'%  |  '+winner+' +'+diff.toFixed(2)+' points — '+(diff>=7?'QUALIFIES (7+ POINTS)':'DOES NOT QUALIFY');
  }
- function sync(){
-  const a=read(team(away)),h=read(team(home));
-  $('paAwayComp').value=a.c??'';$('paAwayAtt').value=a.a??'';
-  $('paHomeComp').value=h.c??'';$('paHomeAtt').value=h.a??'';
-  calc();
- }
- [away,home].forEach(s=>s.addEventListener('change',sync));
- ids.forEach(id=>$(id).addEventListener('input',()=>{
-  const a=team(away),h=team(home);
-  if(a&&$('paAwayComp').value!==''&&$('paAwayAtt').value!==''){
-   const c=Number($('paAwayComp').value),at=Number($('paAwayAtt').value);
-   if(valid(c,at))try{localStorage.setItem(key(a),JSON.stringify({c,a:at}))}catch{}
-  }
-  if(h&&$('paHomeComp').value!==''&&$('paHomeAtt').value!==''){
-   const c=Number($('paHomeComp').value),at=Number($('paHomeAtt').value);
-   if(valid(c,at))try{localStorage.setItem(key(h),JSON.stringify({c,a:at}))}catch{}
-  }
-  calc();
- }));
- sync();
+ return null;
+}
+async function fetchJSON(url){const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
+async function roster(){
+ if(!cache.has('_teams'))cache.set('_teams',fetchJSON(endpoint+'teams?limit=500').then(d=>(d.sports?.[0]?.leagues?.[0]?.teams||[]).map(x=>x.team||x)).catch(()=>[]));
+ return cache.get('_teams');
+}
+async function get(name){
+ const key=normalize(name);if(!key)return null;
+ if(!cache.has(key))cache.set(key,(async()=>{
+  const teams=await roster();
+  const t=teams.find(x=>[x.displayName,x.shortDisplayName,x.name,x.location,x.abbreviation].some(n=>normalize(n)===key));
+  if(!t?.id)return null;
+  try{return parseStats(await fetchJSON(endpoint+'teams/'+encodeURIComponent(t.id)+'/statistics?season=2026'))}catch{return null}
+ })());
+ return cache.get(key);
+}
+let request=0;
+async function refresh(){
+ const a=selected(away),h=selected(home),id=++request;
+ label.textContent=a+' vs '+h;out.style.color='#fff';
+ if(!away.value||!home.value){out.textContent='Select both teams to compare.';return}
+ out.textContent='Retrieving season passing statistics…';
+ const [as,hs]=await Promise.all([get(a),get(h)]);
+ if(id!==request)return;
+ if(!as||!hs){out.textContent='DATA UNAVAILABLE — verified passing completions and attempts could not be retrieved automatically for both teams.';return}
+ const ap=100*as.co/as.at,hp=100*hs.co/hs.at,d=Math.abs(ap-hp),winner=ap>hp?a:hp>ap?h:'Tied';
+ out.style.color=d>=7?'#55e4a4':'#fff';
+ out.textContent=a+': '+as.co+'/'+as.at+' ('+ap.toFixed(2)+'%) | '+h+': '+hs.co+'/'+hs.at+' ('+hp.toFixed(2)+'%) | '+winner+' +'+d.toFixed(2)+' points — '+(d>=7?'QUALIFIES':'DOES NOT QUALIFY');
+}
+[away,home].forEach(s=>s.addEventListener('change',refresh));
+refresh();
 })();
 </script>
+
 </body>
 </html>  
