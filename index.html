@@ -7942,69 +7942,74 @@ loadCFBData();
   refresh();
 })();
 </script>
-<!-- Passing accuracy: automatic source-only comparison; never request manual input. -->
-<section id="passingAccuracyPanel" style="max-width:980px;margin:20px auto;padding:18px;background:#13263a;color:#fff;border:1px solid #46617b;border-radius:12px;font-family:Arial,sans-serif">
-<h2 style="margin:0 0 8px;color:#55e4a4">PASSING ACCURACY ADVANTAGE</h2>
-<div id="paTeams">Select a matchup above.</div>
-<div id="paVerdict" aria-live="polite" style="margin-top:12px">Loading season passing statistics…</div>
-<small style="display:block;margin-top:10px">Season completions ÷ attempts; green indicates a difference of at least 7.0 percentage points. Source: ESPN team season statistics. Unavailable data is not estimated.</small>
+<!-- Passing accuracy daily board: all scheduled matchups, no manual entry. -->
+<section id="passingAccuracyPanel" style="max-width:1100px;margin:20px auto;padding:18px;background:#13263a;color:white;border:1px solid #46617b;border-radius:12px;font-family:Arial,sans-serif">
+<h2 style="color:#55e4a4;margin:0 0 8px">PASSING ACCURACY ADVANTAGE — DAILY BOARD</h2>
+<label for="paDate">Game date (Central Time): </label><input type="date" id="paDate" style="padding:8px;margin:8px;color:#101b2b">
+<p style="margin:4px 0 12px">All games for the date • season completions / attempts • green = at least 7.0 percentage points higher</p>
+<div id="paVerdict" aria-live="polite">Loading games…</div>
+<div id="paBoard" style="overflow-x:auto"></div>
+<small>Source: ESPN college football schedule and team season passing statistics. Unavailable values are not estimated. The game list is independent of the matchup selectors above.</small>
 </section>
 <script>
 (function(){
-const away=document.getElementById('awayTeam')||document.getElementById('away');
-const home=document.getElementById('homeTeam')||document.getElementById('home');
-if(!away||!home)return;
-const out=document.getElementById('paVerdict'),label=document.getElementById('paTeams');
-const endpoint='https://site.api.espn.com/apis/site/v2/sports/football/college-football/';
-const cache=new Map();
-const normalize=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-function selected(s){return s.options[s.selectedIndex]?.textContent?.trim()||''}
-function parseStats(data){
- const categories=data?.results?.stats?.categories||data?.stats?.categories||data?.splits?.categories||[];
- for(const c of categories){
-  const stats=c.stats||[];
-  const find=(...names)=>stats.find(x=>names.includes(String(x.name||x.abbreviation||'').toLowerCase()));
-  const completions=find('completions','passingcompletions','cmp');
-  const attempts=find('passingattempts','passattempts','att');
-  if(completions&&attempts){
-   const co=Number(completions.value??completions.displayValue),at=Number(attempts.value??attempts.displayValue);
-   if(Number.isFinite(co)&&Number.isFinite(at)&&at>0&&co<=at)return {co,at};
+const $=id=>document.getElementById(id),date=$('paDate'),board=$('paBoard'),status=$('paVerdict');
+const base='https://site.api.espn.com/apis/site/v2/sports/football/college-football/';
+const cache=new Map();let generation=0;
+const now=new Date(),parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);
+const get=k=>parts.find(p=>p.type===k).value;
+date.value=get('year')+'-'+get('month')+'-'+get('day');
+const json=async url=>{const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
+const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function totals(d){
+ const categories=d?.results?.stats?.categories||d?.stats?.categories||d?.splits?.categories||[];
+ for(const cat of categories){
+  const ss=cat.stats||[];
+  const find=names=>ss.find(x=>names.includes(norm(x.name))||names.includes(norm(x.abbreviation)));
+  const c=find(['completions','passingcompletions','cmp']),a=find(['passingattempts','passattempts']);
+  if(c&&a){const co=Number(c.value??c.displayValue),at=Number(a.value??a.displayValue);
+   if(Number.isInteger(co)&&Number.isInteger(at)&&at>0&&co>=0&&co<=at)return {co,at,p:100*co/at};
   }
- }
- return null;
+ }return null;
 }
-async function fetchJSON(url){const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
-async function roster(){
- if(!cache.has('_teams'))cache.set('_teams',fetchJSON(endpoint+'teams?limit=500').then(d=>(d.sports?.[0]?.leagues?.[0]?.teams||[]).map(x=>x.team||x)).catch(()=>[]));
- return cache.get('_teams');
+async function stats(id){
+ if(!id)return null;
+ if(!cache.has(id))cache.set(id,json(base+'teams/'+encodeURIComponent(id)+'/statistics?season=2026').then(totals).catch(()=>null));
+ return cache.get(id);
 }
-async function get(name){
- const key=normalize(name);if(!key)return null;
- if(!cache.has(key))cache.set(key,(async()=>{
-  const teams=await roster();
-  const t=teams.find(x=>[x.displayName,x.shortDisplayName,x.name,x.location,x.abbreviation].some(n=>normalize(n)===key));
-  if(!t?.id)return null;
-  try{return parseStats(await fetchJSON(endpoint+'teams/'+encodeURIComponent(t.id)+'/statistics?season=2026'))}catch{return null}
- })());
- return cache.get(key);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function showRow(away,home,as,hs){
+ if(!as||!hs)return '<tr><td>'+esc(away.displayName)+'</td><td>'+esc(home.displayName)+'</td><td colspan="3">DATA UNAVAILABLE</td></tr>';
+ const diff=Math.abs(as.p-hs.p),lead=as.p>hs.p?away.displayName:hs.p>as.p?home.displayName:'Tie';
+ const qualifier=diff>=7;
+ return '<tr><td>'+esc(away.displayName)+'</td><td>'+esc(home.displayName)+'</td><td>'+as.p.toFixed(2)+'% ('+as.co+'/'+as.at+')</td><td>'+hs.p.toFixed(2)+'% ('+hs.co+'/'+hs.at+')</td><td style="'+(qualifier?'color:#55e4a4;font-weight:bold':'')+'">'+esc(lead)+' +'+diff.toFixed(2)+' — '+(qualifier?'QUALIFIES':'No')+'</td></tr>';
 }
-let request=0;
-async function refresh(){
- const a=selected(away),h=selected(home),id=++request;
- label.textContent=a+' vs '+h;out.style.color='#fff';
- if(!away.value||!home.value){out.textContent='Select both teams to compare.';return}
- out.textContent='Retrieving season passing statistics…';
- const [as,hs]=await Promise.all([get(a),get(h)]);
- if(id!==request)return;
- if(!as||!hs){out.textContent='DATA UNAVAILABLE — verified passing completions and attempts could not be retrieved automatically for both teams.';return}
- const ap=100*as.co/as.at,hp=100*hs.co/hs.at,d=Math.abs(ap-hp),winner=ap>hp?a:hp>ap?h:'Tied';
- out.style.color=d>=7?'#55e4a4':'#fff';
- out.textContent=a+': '+as.co+'/'+as.at+' ('+ap.toFixed(2)+'%) | '+h+': '+hs.co+'/'+hs.at+' ('+hp.toFixed(2)+'%) | '+winner+' +'+d.toFixed(2)+' points — '+(d>=7?'QUALIFIES':'DOES NOT QUALIFY');
+async function load(){
+ const g=++generation;board.textContent='';status.textContent='Loading all scheduled games for '+date.value+'…';
+ try{
+  const ymd=date.value.replace(/-/g,'');
+  const data=await json(base+'scoreboard?dates='+ymd+'&limit=500&groups=80');
+  if(g!==generation)return;
+  const events=data.events||[];
+  if(!events.length){status.textContent='No games returned for this date.';return}
+  const games=events.map(e=>{const c=e.competitions?.[0]?.competitors||[];return {away:c.find(x=>x.homeAway==='away')?.team,home:c.find(x=>x.homeAway==='home')?.team}}).filter(x=>x.away&&x.home);
+  status.textContent=games.length+' matchups listed • loading passing percentages…';
+  board.innerHTML='<table style="width:100%;border-collapse:collapse;text-align:left"><thead><tr><th>Away</th><th>Home</th><th>Away completion %</th><th>Home completion %</th><th>Advantage</th></tr></thead><tbody id="paRows"></tbody></table>';
+  const rows=$('paRows');let complete=0;
+  for(let i=0;i<games.length;i+=8){
+   const batch=games.slice(i,i+8);
+   const result=await Promise.all(batch.map(async x=>showRow(x.away,x.home,await stats(x.away.id),await stats(x.home.id))));
+   if(g!==generation)return;
+   rows.insertAdjacentHTML('beforeend',result.join(''));
+   complete+=batch.length;status.textContent=complete+' / '+games.length+' matchups processed';
+  }
+  status.textContent=games.length+' matchups • automatic season passing comparison';
+ }catch(e){if(g===generation)status.textContent='DATA UNAVAILABLE — schedule could not be loaded ('+e.message+').'}
 }
-[away,home].forEach(s=>s.addEventListener('change',refresh));
-refresh();
+date.addEventListener('change',load);load();
 })();
 </script>
+
 
 </body>
 </html>  
