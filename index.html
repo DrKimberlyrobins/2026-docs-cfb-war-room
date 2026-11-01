@@ -7962,22 +7962,29 @@ date.value=get('year')+'-'+get('month')+'-'+get('day');
 const json=async url=>{const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
 const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function totals(d){
- const categories=d?.splits?.categories||d?.results?.stats?.categories||d?.stats?.categories||[];
- for(const cat of categories){
-  const ss=cat.stats||[];
-  const find=names=>ss.find(x=>names.includes(norm(x.name))||names.includes(norm(x.abbreviation)));
-  const c=find(['completions','passingcompletions','cmp']),a=find(['passingattempts','passattempts']);
-  if(c&&a){const co=Number(c.value??c.displayValue),at=Number(a.value??a.displayValue);
-   if(Number.isInteger(co)&&Number.isInteger(at)&&at>0&&co>=0&&co<=at)return {co,at,p:100*co/at};
-  }
- }return null;
+ const root=d?.splits||d?.results?.stats||d?.stats||d;
+ const categories=root?.categories||d?.splits?.categories||[];
+ const list=categories.flatMap(cat=>cat.stats||[]);
+ const normValue=x=>String(x?.displayValue??x?.value??'').trim();
+ const find=(...keys)=>list.find(x=>keys.includes(norm(x.name))||keys.includes(norm(x.abbreviation)));
+ const pair=find('completionattempts','passingcompletionattempts','completionsattempts');
+ if(pair){
+  const m=normValue(pair).match(/(\\d+)\\s*[/\\-]\\s*(\\d+)/);
+  if(m){const co=Number(m[1]),at=Number(m[2]);if(at>0&&co<=at)return {co,at,p:100*co/at}}
+ }
+ const c=find('completions','passingcompletions','cmp','passcompletions');
+ const a=find('passingattempts','passattempts','attempts');
+ if(c&&a){const co=Number(c.value??c.displayValue),at=Number(a.value??a.displayValue);
+  if(Number.isFinite(co)&&Number.isFinite(at)&&at>0&&co>=0&&co<=at)return {co,at,p:100*co/at};
+ }
+ return null;
 }
 async function stats(id){
  if(!id)return null;
  if(!cache.has(id))cache.set(id,(async()=>{
  const year=Number(date.value.slice(0,4))||new Date().getFullYear();
  const core='https://sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/'+year+'/types/2/teams/'+encodeURIComponent(id)+'/statistics';
- const urls=[core,core+'/0',base+'teams/'+encodeURIComponent(id)+'/statistics?season='+year];
+ const urls=[core+'/0',core,base+'teams/'+encodeURIComponent(id)+'/statistics?season='+year];
  for(const url of urls){try{const found=totals(await json(url));if(found)return found}catch(e){console.debug('Passing statistics source unavailable',url,e)}}
  return null;
 })());
