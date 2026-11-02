@@ -4603,15 +4603,15 @@
   },
   {
     "team": "Delaware Valley",
-    "games": 6,
-    "avg1QScored": 6.333333333333333,
-    "avg1QAllowed": 3.5,
-    "avg1HScored": 13.5,
-    "avg1HAllowed": 11.5,
-    "avgFullScored": 28.5,
-    "avgFullAllowed": 17.666666666666668,
+    "games": 7,
+    "avg1QScored": 6.285714285714286,
+    "avg1QAllowed": 5,
+    "avg1HScored": 14.285714285714286,
+    "avg1HAllowed": 13.857142857142858,
+    "avgFullScored": 33.142857142857146,
+    "avgFullAllowed": 20.142857142857142,
     "homeGames": 3,
-    "awayGames": 3,
+    "awayGames": 4,
     "home": {
       "games": 3,
       "avg1QScored": 8,
@@ -4622,13 +4622,13 @@
       "avgFullAllowed": 14
     },
     "away": {
-      "games": 3,
-      "avg1QScored": 4.666666666666667,
-      "avg1QAllowed": 4.666666666666667,
-      "avg1HScored": 12,
-      "avg1HAllowed": 13.666666666666666,
-      "avgFullScored": 24,
-      "avgFullAllowed": 21.333333333333332
+      "games": 4,
+      "avg1QScored": 5,
+      "avg1QAllowed": 7,
+      "avg1HScored": 13.75,
+      "avg1HAllowed": 17.25,
+      "avgFullScored": 33.25,
+      "avgFullAllowed": 24.75
     }
   },
   {
@@ -8673,23 +8673,23 @@
   },
   {
     "team": "King's",
-    "games": 5,
-    "avg1QScored": 4.2,
-    "avg1QAllowed": 9.2,
-    "avg1HScored": 11.8,
-    "avg1HAllowed": 18,
-    "avgFullScored": 26,
-    "avgFullAllowed": 24,
-    "homeGames": 3,
+    "games": 6,
+    "avg1QScored": 5.833333333333333,
+    "avg1QAllowed": 8.666666666666666,
+    "avg1HScored": 14.5,
+    "avg1HAllowed": 18.166666666666668,
+    "avgFullScored": 27.5,
+    "avgFullAllowed": 30.166666666666668,
+    "homeGames": 4,
     "awayGames": 2,
     "home": {
-      "games": 3,
-      "avg1QScored": 2.3333333333333335,
-      "avg1QAllowed": 8.666666666666666,
-      "avg1HScored": 10.333333333333334,
-      "avg1HAllowed": 13,
-      "avgFullScored": 20,
-      "avgFullAllowed": 16.333333333333332
+      "games": 4,
+      "avg1QScored": 5.25,
+      "avg1QAllowed": 8,
+      "avg1HScored": 14.75,
+      "avg1HAllowed": 14.5,
+      "avgFullScored": 23.75,
+      "avgFullAllowed": 27.5
     },
     "away": {
       "games": 2,
