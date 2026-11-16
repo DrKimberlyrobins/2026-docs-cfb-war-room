@@ -13303,23 +13303,23 @@
   },
   {
     "team": "Oklahoma",
-    "games": 9,
-    "avg1QScored": 3.3333333333333335,
-    "avg1QAllowed": 3.888888888888889,
-    "avg1HScored": 9.333333333333334,
-    "avg1HAllowed": 11.444444444444445,
-    "avgFullScored": 22.11111111111111,
-    "avgFullAllowed": 19.22222222222222,
-    "homeGames": 5,
+    "games": 10,
+    "avg1QScored": 4.4,
+    "avg1QAllowed": 3.5,
+    "avg1HScored": 9.8,
+    "avg1HAllowed": 11,
+    "avgFullScored": 22.3,
+    "avgFullAllowed": 19,
+    "homeGames": 6,
     "awayGames": 4,
     "home": {
-      "games": 5,
-      "avg1QScored": 4.8,
-      "avg1QAllowed": 4.2,
-      "avg1HScored": 12.2,
-      "avg1HAllowed": 11.6,
-      "avgFullScored": 26,
-      "avgFullAllowed": 18.6
+      "games": 6,
+      "avg1QScored": 6.333333333333333,
+      "avg1QAllowed": 3.5,
+      "avg1HScored": 12.5,
+      "avg1HAllowed": 10.833333333333334,
+      "avgFullScored": 25.666666666666668,
+      "avgFullAllowed": 18.333333333333332
     },
     "away": {
       "games": 4,
@@ -13453,15 +13453,15 @@
   },
   {
     "team": "Ole Miss",
-    "games": 9,
-    "avg1QScored": 4.555555555555555,
-    "avg1QAllowed": 4.777777777777778,
-    "avg1HScored": 16.333333333333332,
-    "avg1HAllowed": 10.777777777777779,
-    "avgFullScored": 33.77777777777778,
-    "avgFullAllowed": 26,
+    "games": 10,
+    "avg1QScored": 4.1,
+    "avg1QAllowed": 5.7,
+    "avg1HScored": 15.4,
+    "avg1HAllowed": 11.1,
+    "avgFullScored": 32.1,
+    "avgFullAllowed": 25.8,
     "homeGames": 6,
-    "awayGames": 3,
+    "awayGames": 4,
     "home": {
       "games": 6,
       "avg1QScored": 4,
@@ -13472,13 +13472,13 @@
       "avgFullAllowed": 21.833333333333332
     },
     "away": {
-      "games": 3,
-      "avg1QScored": 5.666666666666667,
-      "avg1QAllowed": 7.666666666666667,
-      "avg1HScored": 17,
-      "avg1HAllowed": 14.666666666666666,
-      "avgFullScored": 35.666666666666664,
-      "avgFullAllowed": 34.333333333333336
+      "games": 4,
+      "avg1QScored": 4.25,
+      "avg1QAllowed": 9.25,
+      "avg1HScored": 14.5,
+      "avg1HAllowed": 14.5,
+      "avgFullScored": 31,
+      "avgFullAllowed": 31.75
     }
   },
   {
